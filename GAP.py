@@ -9,8 +9,7 @@ from System import GAPipeline
 
 # Define the available platform modules
 available_plat_modules = {
-    "Google": "GooglePlatform",
-    "Hardac": "SlurmPlatform",
+    "Google": "GooglePlatform"
 }
 
 def configure_argparser(argparser_obj):
