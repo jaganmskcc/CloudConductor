@@ -3,7 +3,7 @@
 ## What is CloudConductor?
 
 **CloudConductor** is a cloud-based workflow engine for defining and executing bioinformatics pipelines in a cloud environment. 
-Currently, the framework has been tested extensively on the [Google Cloud Platform](https://cloud.google.com/).
+Currently, the framework has been tested extensively on the [Google Cloud Platform](https://cloud.google.com/), but will eventually support other platforms including AWS, Azure, etc.
 
 ## Feature Highlights
 
