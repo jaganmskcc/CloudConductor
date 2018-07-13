@@ -126,6 +126,14 @@ Below, we use CloudConductor's in-built scatter-gather logic to align a set of r
 
 ```
 
+## What Next?
+
+Get started with our full [documentation](https://google.com) to explore the ways CloudConductor can streamline the development and execution of complex, multi-sample workflows typical in bioinformatics.
+
+## Project Status
+
+CloudConductor is actively under development. To get involved or request features, please any of the authors listed below.
+
 ## Authors
 
 * [Alex Waldrop](https://github.com/alexwaldrop)
