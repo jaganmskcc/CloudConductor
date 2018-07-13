@@ -7,25 +7,29 @@ Currently, the framework has been tested extensively on the [Google Cloud Platfo
 
 ## Feature Highlights
 
-  * User-friendly
-    * define complex workflows by linking together user-defined modules in [config_obj](http://configobj.readthedocs.io/en/latest/configobj.html) 
-    * Comes with 50+ pre-built tools that can be extended/modified to your liking
-  * Portable
-    * Dockerizable
-    * Platform independent
-  * Modular/Extensible
-    * Pipeline made of user-defined python classes that can be re-used, customized
-  * Scalable
-    * Cloud computing = you can use lots of computing
-  * Pre-Launch Type-Checking
-    * Will tell you before execution is run whether it will run
-    * Verbose output tells you how to fix whats wrong
-  * Elastic
-    * resource usage scales automatically with data input size
-  * Scatter-Gather Parallelism
-    * In-built logic for dividing large tasks into small chunks
-  * Economical
-    * it's cheap
+  * **User-friendly**
+    * Define complex workflows by linking together user-defined modules that can be re-used across pipelines
+    * [Config_obj](http://configobj.readthedocs.io/en/latest/configobj.html) for clean, readable workflows (see below example)
+    * +50 pre-installed modules for existing bioinformatics tools
+  * **Portable**
+    * Docker integration ensures reproducible runtime environment for modules    
+    * Platform independent (currently supports GCS; AWS, Azure to come)
+  * **Modular/Extensible**
+    * User-defined Plug-N-Play modules
+      * Re-used across pipelines, re-combined in any combination
+      * Modules easily added, customized as new tools needed, old tools changed
+      * Eliminates copy/paste re-use of code across workflows 
+  * **Pre-Launch Type-Checking**
+    * Strongly-typed module declarations allow catching pipeline errors before they occur
+    * Pre-launch checks make sure all external files exist before runtime
+  * **Scalable**
+    * Removes resource limitations imposed by cluster-based HPCCs
+  * **Elastic**
+    * VM usage automatically scales to match input file sizes, computational needs
+  * **Scatter-Gather Parallelism**
+    * In-built logic for dividing large tasks into small chunks and re-combining
+  * **Economical**
+    * Preemptible/Spot instances drastically cut workflow costs
 
 ## Setting up your system
   
@@ -91,77 +95,36 @@ You will need to install and configure the following tools to run your pipelines
           -o FINAL_OUTPUT_DIR, --output_dir FINAL_OUTPUT_DIR
                                 Absolute path to the final output directory.
                                 
-## Example User-Module
+## A simple pipeline example
+Below, we use CloudConductor's in-built scatter-gather logic to align a set of reads to a reference genome. 
+```ini
 
-```python
+# Trim input FASTQ reads with Trimmomatic
+[trim_reads]
+	module      = Trimmomatic
 
-class SamtoolsFlagstat(Module):
-    def __init__(self, module_id, is_docker = False):
-        """ 
-        User-Defined Module for using Samtools Flagstat to compute summary statistics on a BAM file
+# Scatter trimmed FASTQ into smaller chunks for fast alignment
+[split_fastq]
+	module      = FastqSplitter
+	input_from  = trim_reads
 
-        """
+# Align chunks in parallel to reference genome using BWA
+[align_reads]
+	module      = BWA
+	input_from  = split_fastq, get_read_group
 
-        super(Flagstat, self).__init__(module_id, is_docker)
-        self.output_keys = ["flagstat"]
+# Index BAM files output by BWA
+[index_bam]
+	module      = Samtools
+	submodule   = Index
+	input_from  = align_reads
 
-    def define_input(self):
-        """ 
-        Declares the input types expected to be able to run Samtools Flagstat
-        
-        """
-    
-        # Requires a a BAM file and index
-        self.add_argument("bam",        is_required=True)
-        self.add_argument("bam_idx",    is_required=True)
-        
-        # Requires path to samtools executable
-        self.add_argument("samtools",   is_required=True, is_resource=True)
-        
-        # Specify runtime resources expected to run module
-        self.add_argument("nr_cpus",    is_required=True, default_value=2)
-        self.add_argument("mem",        is_required=True, default_value=5)
-
-    def define_output(self):
-    
-        """ 
-        Declares the output types and file paths produced by Samtools Flagstat
-        
-        """
-    
-        # Generate a unique filename on the fly
-        flagstat = self.generate_unique_file_name(".flagstat.out")
-        
-        
-        # Declare module produces output file of type 'flagstat' at path generated above
-        self.add_output("flagstat", flagstat, is_path=True)
-
-    def define_command(self):
-    
-        """ 
-        Define unix command that will use the inputs at runtime to produce the declared output
-        
-        """
-        
-        # Get path of bam file provided to module at runtime
-        bam         = self.get_argument("bam")
-        
-        # Get path of samtools executable
-        samtools    = self.get_argument("samtools")
-        
-        # Get path of output file to be produced
-        flagstat    = self.get_output("flagstat")
-
-        # Generating and returning command
-        cmd = "{0} flagstat {1} > {2}".format(samtools, bam, flagstat)
-        return cmd
+#  Merge split BAM files into single bam
+[merge_bams]
+	module      = MergeBams
+	input_from  = align_reads, index_bam
 
 ```
-
-
-## Example User-Pipeline
-
-
 
 ## Authors
 
