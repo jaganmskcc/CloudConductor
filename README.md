@@ -1,4 +1,4 @@
-# CloudConductor ![alt text](http://via.placeholder.com/50x50 "Logo Title Text 1")
+# CloudConductor <img src="docs/_static/cloud-conductor-logo-colored.png" alt="Derp" width=100 height=50 />
 
 ## What is CloudConductor?
 
