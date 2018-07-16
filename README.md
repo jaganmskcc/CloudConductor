@@ -1,4 +1,4 @@
-# CloudConductor <img src="docs/_static/cloud-conductor-logo-colored.png" alt="Derp" width=100 height=50 />
+<img src="docs/_static/cloud-conductor-logo-colored.png" alt="Derp" width=300 height=150 align="middle"/>
 
 ## What is CloudConductor?
 
