@@ -9,8 +9,7 @@ from System import GAPipeline
 
 # Define the available platform modules
 available_plat_modules = {
-    "Google": "GooglePlatform",
-    "Hardac": "SlurmPlatform",
+    "Google": "GooglePlatform"
 }
 
 def configure_argparser(argparser_obj):
@@ -92,7 +91,7 @@ def configure_argparser(argparser_obj):
                                type=platform_type,
                                dest='platform_module',
                                required=True,
-                               help="Platform to be used. Possible values are:\n%s" % available_plats,)
+                               help="Platform to be used. Possible values are:\n   %s" % available_plats,)
 
     # Verbosity level
     argparser_obj.add_argument("-v",
@@ -102,10 +101,10 @@ def configure_argparser(argparser_obj):
                                default=0,
                                help="Increase verbosity of the program."
                                     "Multiple -v's increase the verbosity level:\n"
-                                    "0 = Errors\n"
-                                    "1 = Errors + Warnings\n"
-                                    "2 = Errors + Warnings + Info\n"
-                                    "3 = Errors + Warnings + Info + Debug")
+                                    "   0 = Errors\n"
+                                    "   1 = Errors + Warnings\n"
+                                    "   2 = Errors + Warnings + Info\n"
+                                    "   3 = Errors + Warnings + Info + Debug")
 
     # Final output dir
     argparser_obj.add_argument("-o", "--output_dir",
@@ -163,7 +162,7 @@ def configure_import_paths():
 def main():
 
     # Configure argparser
-    argparser = argparse.ArgumentParser(prog="GAP")
+    argparser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
     configure_argparser(argparser)
 
     # Parse the arguments

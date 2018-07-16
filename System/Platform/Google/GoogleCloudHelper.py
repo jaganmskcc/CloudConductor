@@ -150,7 +150,7 @@ class GoogleCloudHelper:
         attrs = ",".join(["%s=%s" % (str(k), str(v)) for k, v in attributes.iteritems()])
 
         # Run command to publish message to the topic
-        cmd = "gcloud --quiet --no-user-output-enabled beta pubsub topics publish %s \"%s\" --attribute=%s" \
+        cmd = "gcloud --quiet --no-user-output-enabled pubsub topics publish %s --message \"%s\" --attribute=%s" \
               % (topic, message, attrs)
 
         err_msg = "Could not send a message to Google Pub/Sub"
@@ -211,7 +211,7 @@ class GoogleCloudHelper:
     def pubsub_topic_exists(topic_id):
 
         # Check to see if the reporting Pub/Sub topic exists
-        cmd = "gcloud beta pubsub topics list --format=json"
+        cmd = "gcloud pubsub topics list --format=json"
         out, err = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True).communicate()
 
         if len(err):
@@ -220,7 +220,7 @@ class GoogleCloudHelper:
 
         topics = json.loads(out)
         for topic in topics:
-            if topic["topicId"] == topic_id:
+            if topic["name"].split("/")[-1] == topic_id:
                 return True
 
         return False
