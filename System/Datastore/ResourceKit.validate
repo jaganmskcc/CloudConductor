@@ -1,0 +1,13 @@
+[Docker]
+    [[__many__]]
+        image                   = string
+        [[[__many__]]]
+            resource_type           = string
+            path                    = string
+            containing_dir          = string(default=None)
+
+[Path]
+    [[__many__]]
+        resource_type           = string
+        path                    = string
+        containing_dir          = string(default=None)

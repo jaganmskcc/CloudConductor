@@ -1,12 +1,24 @@
 import logging
-import os
 import abc
 import uuid
+import threading
 
 from Config import ConfigParser
+from Processor import Processor
+
+class TaskPlatformResourceLimitError(Exception):
+    pass
+
+class TaskPlatformLockError(Exception):
+    pass
+
+class InvalidProcessorError(Exception):
+    pass
 
 class Platform(object):
     __metaclass__ = abc.ABCMeta
+
+    CONFIG_SPEC = None
 
     def __init__(self, name, platform_config_file, final_output_dir):
 
@@ -14,294 +26,104 @@ class Platform(object):
         self.name = name
 
         # Initialize platform config
-        config_spec_file    = self.define_config_spec_file()
-        config_parser       = ConfigParser(platform_config_file, config_spec_file)
+        config_parser       = ConfigParser(platform_config_file, self.CONFIG_SPEC)
         self.config         = config_parser.get_config()
 
-        # Init platform variables from config
+        # Platform-wide resource limits
+        self.TOTAL_NR_CPUS      = self.config["PLAT_MAX_NR_CPUS"]
+        self.TOTAL_MEM          = self.config["PLAT_MAX_MEM"]
+        self.TOTAL_DISK_SPACE   = self.config["PLAT_MAX_DISK_SPACE"]
+
+        # Single process max resource limit
         self.MAX_NR_CPUS        = self.config["PROC_MAX_NR_CPUS"]
         self.MAX_MEM            = self.config["PROC_MAX_MEM"]
+        self.MAX_DISK_SPACE     = self.config["PROC_MAX_DISK_SPACE"]
+
+        # Single process min resource limits
+        self.MIN_NR_CPUS        = 1
+        self.MIN_MEM            = 1
+        self.MIN_DISK_SPACE     = 1
+
+        # Check to make sure resource limits are fine
+        self.__check_resources()
 
         # Define workspace directory names
-        wrk_dir                 = self.config["workspace_dir"]
-        self.workspace          = self.define_workspace(wrk_dir)
+        self.wrk_dir            = self.config["workspace_dir"]
         self.final_output_dir   = self.standardize_dir(final_output_dir)
-
-        # Boolean for whether main processor has been initialized
-        self.launched   = False
 
         # Dictionary to hold processors currently managed by the platform
         self.processors = {}
 
-        # Main platform processor
-        self.main_processor = None
+        # Platform resource threading lock
+        self.platform_lock = threading.Lock()
 
-    def define_workspace(self, workspace_dir):
-        # Define workspace directory and final output paths
-        dirs = {"wrk" : self.standardize_dir(workspace_dir)}
-        for sub_dir in ["log", "tmp", "res", "bin", "lib"]:
-            dirs[sub_dir] = self.standardize_dir(os.path.join(workspace_dir, sub_dir))
-        return dirs
+        # Boolean flag to lock processor creation upon cleanup
+        self.__locked = False
 
-    def launch_platform(self, resource_kit, sample_set):
+    def get_processor(self, task_id, nr_cpus, mem, disk_space):
+        # Initialize new processor and register with platform
 
-        # Loads platform capable of running pipeline
-        self.main_processor = self.get_main_processor()
-        self.launched = True
+        logging.debug("(%s) Checking platform locked..." % task_id)
+        if self.__locked:
+            logging.error("Platform failed to initialize processor with id '%s'! Platform is currently locked!" % task_id)
+            raise TaskPlatformLockError("Cannot get processor while platform is locked!")
+        logging.debug("(%s) Platform ain't locked!" % task_id)
 
-        # Initialize workspace directory structure
-        logging.info("Initializing workspace env...")
-        self.init_workspace()
-        logging.info("Workspace successfully initialized!")
+        # Check to see if processor is asking for too many resources
+        logging.debug("(%s) Checking to see if processor is too big for platform..." % task_id)
+        self.__check_processor(task_id, nr_cpus, mem, disk_space)
+        logging.debug("(%s) Processor ain't too big!" % task_id)
 
-        # Create final output directory and wait to make sure it was actually created
-        logging.info("Creating final output directory...")
-        self.mkdir(self.final_output_dir)
-        self.main_processor.wait()
-        logging.info("Final output directory successfully create!")
-
-        # Transfer remote resources to platform resource directory
-        # Link exectuable files to workspace bin directory
-        # Link library files to workspace lib directory
-        self.install_resource_kit(resource_kit)
-
-        # Load input data on platform workspace
-        self.load_input_data(sample_set)
-
-        # Make everything in the workspace accessible to everyone
-        logging.info("Updating workspace permissions...")
-        cmd = "sudo chmod -R 777 %s" % self.get_workspace_dir()
-        self.run_quick_command("update_wrkspace_perms", cmd)
-
-    def install_resource_kit(self, resource_kit):
-        # Transfers remote resources to workspace resource directory
-        # Links exectuables/libraries to wrkspace bin and lib directories
-        logging.info("Installing resource kit to workspace...")
-        resource_dir  = self.get_workspace_dir("res")
-        bin_dir       = self.get_workspace_dir("bin")
-        lib_dir       = self.get_workspace_dir("lib")
-
-        # Get list of resources
-        resources = resource_kit.get_resources()
-
-        # List of resources paths that have been transferred to platform
-        # Used to prevent paths being overwritten
-        seen = []
-
-        # For every resource:
-        # Transfer to platform if remote
-        for resource_type, resource_names in resources.iteritems():
-            for resource_name, resource in resource_names.iteritems():
-                if resource.is_remote():
-
-                    # Transfer entire containing directory if one is specified
-                    if resource.get_containing_dir() is not None:
-                        src_path = resource.get_containing_dir()
-
-                    # Transfer single file otherwise
-                    else:
-                        src_path = resource.get_path()
-
-                    # Add wildcard string if path is a prefix
-                    if resource.is_prefix():
-                        # Transfer with wildcard if path provided is a prefix
-                        src_path += "*"
-
-                    # Transfer to resource directory
-                    if src_path not in seen:
-                        logging.info("Transferring remote resource '%s' with path %s..." % (resource_name, src_path))
-                        self.transfer(src_path=src_path,
-                                    dest_dir=resource_dir,
-                                    log_transfer=True,
-                                    job_name="transfer_%s" % resource_name)
-
-                    # Add src path to list of seen paths
-                    seen.append(src_path)
-
-                    # Update path to reflect transfer
-                    src_path = src_path.replace("*", "")
-                    resource_kit.update_path(src_path, resource_dir)
-                    logging.info("Updated path: %s" % resource.get_path())
-
-
-        # Wait for all transfers to complete
-        self.main_processor.wait()
-
-        # Link bin/lib directories if necessary
-        for resource_type, resource_names in resources.iteritems():
-            for resource_name, resource in resource_names.iteritems():
-                # Link executable to workspace bin dir if executable
-                if resource.is_executable():
-                    logging.info("Linking executable resource '%s' to workspace bin directory..." % resource_name)
-                    self.__link_path(resource.get_path(), bin_dir)
-
-                if resource.is_library():
-                    logging.info("Linking library resource '%s' to workspace lib directory..." % resource_name)
-                    self.__link_path(resource.get_path(), lib_dir)
-        logging.info("Resource kit successfully installed!")
-
-    def load_input_data(self, sample_set):
-        # Transfer sample input data files to platform workspace
-        # Get paths to transfer to workspace directory
-        logging.info("Transferring sample input data to workspace...")
-        paths       = sample_set.get_paths()
-        dest_dir    = self.get_workspace_dir("wrk")
-        count = 1
-
-        for path_type, path_data in paths.iteritems():
-            if isinstance(path_data, list):
-                for path in path_data:
-                    # Transfer file to workspace
-                    logging.info("Transferring sample file: %s" % path)
-                    job_name = "transfer_user_input_%d" % count
-                    self.transfer(src_path=path,
-                                  dest_dir=dest_dir,
-                                  log_transfer=True,
-                                  job_name=job_name)
-                    # Update path to reflect transfer
-                    sample_set.update_path(path, dest_dir)
-                    count += 1
-
-                    # Wait for every 50 transfer jobs to be complete
-                    if count % 50 == 0:
-                        self.main_processor.wait()
-
-            else:
-                path = path_data
-                logging.info("Transferring sample file: %s" % path)
-                # Transfer file to workspace
-                job_name = "transfer_user_input_%d" % count
-                self.transfer(src_path=path,
-                              dest_dir=dest_dir,
-                              log_transfer=True,
-                              job_name=job_name)
-                # Update path to reflect transfer
-                sample_set.update_path(path, dest_dir)
-                count += 1
-
-                # Wait for every 50 tranfer jobs to be complete
-                if count % 50 == 0:
-                    self.main_processor.wait()
-
-        # Wait for all transfers to complete
-        self.main_processor.wait()
-        logging.info("Input data successfully transferred to workspace!")
-
-    def get_main_processor(self):
-        # Create and return a main processor that's ready to run commands
-        logging.info("Creating main processor...")
-        main_processor = self.create_main_processor()
-
-        # Add to list of processors if not already there
-        if main_processor.name not in self.processors:
-            self.processors[main_processor.name] = main_processor
-
-        # Set log directory if not already done
-        main_processor.set_log_dir(self.get_workspace_dir("log"))
-
-        # Add workspace bin directory to PATH env variable
-        main_processor.set_env_variable("PATH", self.get_workspace_dir("bin"))
-
-        # Add workspace lib directory to LD_LIB_PATH env variable
-        main_processor.set_env_variable("LD_LIB_PATH", self.get_workspace_dir("lib"))
-
-        logging.info("Main processor '%s' ready to load platform!" % main_processor.name)
-        return self.processors[main_processor.name]
-
-    def get_processor(self, name, nr_cpus, mem):
         # Ensure unique name for processor
-        name        = "proc-%s-%s-%s" % (self.name[:20], name[:25], self.generate_unique_id())
-        logging.info("Creating processor '%s'..." % name)
+        name        = "proc-%s-%s-%s" % (self.name[:20], task_id[:25], self.generate_unique_id())
+        logging.info("Creating processor '%s' for task '%s'..." % (name, task_id))
 
-        # Create processor with requested resources (CPU/Mem)
-        processor   = self.create_processor(name, nr_cpus, mem)
+        # Initialize new processor with enough CPU/mem/disk space to complete task
+        logging.debug("(%s) Checking to see if processor is too big for platform..." % task_id)
+        processor   = self.init_task_processor(name, nr_cpus, mem, disk_space)
+        logging.debug("(%s) Platform sucessfully initialized processor for task!" % task_id)
 
         # Add to list of processors if not already there
-        name = processor.name
-        if name not in self.processors:
-            self.processors[name] = processor
+        with self.platform_lock:
+            logging.debug("(%s) We starting to put that processor in the spot..." % task_id)
+            if task_id not in self.processors:
+                self.processors[task_id] = processor
+                logging.debug("(%s) We put that processor in the spot!" % task_id)
+            else:
+                logging.error("Platform cannot create task processor with duplicate id: '%s'!" % task_id)
+                raise RuntimeError("Platform attempted to create duplicate task processor!")
 
-        # Set log directory
-        processor.set_log_dir(self.get_workspace_dir("log"))
+        return self.processors[task_id]
 
-        # Add workspace bin directory to PATH env variable
-        processor.set_env_variable("PATH", self.get_workspace_dir("bin"))
+    def get_helper_processor(self):
+        # Initialize helper processor
 
-        # Add workspace lib directory to LD_LIB_PATH env variable
-        processor.set_env_variable("LD_LIB_PATH", self.get_workspace_dir("lib"))
+        if self.__locked:
+            logging.error("Platform failed to initialize helper processor! Platform is currently locked!")
+            raise TaskPlatformLockError("Cannot get processor while platform is locked!")
 
-        logging.info("Processor '%s' (%d vCPUs, %dGB RAM) ready for processing!"
-                     % (name, processor.nr_cpus, processor.mem))
-        return self.processors[processor.name]
+        # Ensure unique name for processor
+        name        = "helper-%s" % self.name
+        logging.info("Creating helper processor '%s'..." % name)
 
-    def run_command(self, job_name, cmd, nr_cpus, mem):
-        # Create a processor capable of running a cmd with specified CPU/Mem requirements and run the job
-        processor = self.get_processor(job_name, nr_cpus, mem)
+        # Initialize new processor with enough CPU/mem/disk space to complete task
+        processor   = self.init_helper_processor(name, nr_cpus=self.MIN_NR_CPUS+1, mem=self.MIN_MEM+5, disk_space=self.MIN_DISK_SPACE+25)
 
-        # Begin running process on processor
-        processor.run(job_name, cmd)
-
-        # Wait for job to finish and get output
-        out, err = processor.wait_process(job_name)
-
-        # Destroy processor
-        processor.destroy()
-
-        # Return output
-        return out, err
-
-    def run_quick_command(self, job_name, cmd):
-        # Run a lightweight command on the main instance.
-        # Not intended for jobs requiring more than 1 thread
-        self.main_processor.run(job_name, cmd)
-        out, err = self.main_processor.wait_process(job_name)
-        return out, err
-
-    def return_output(self, job_name, output_path, sub_dir=None, dest_file=None, log_transfer=True):
-        logging.info("Returning output file: %s" % output_path)
-
-        # Setup subdirectory within final output directory, if necessary final output directory
-        if sub_dir is not None:
-            dest_dir = os.path.join(self.final_output_dir, sub_dir) + "/"
-            self.mkdir(dest_dir)
+        # Add to list of processors if not already there
+        if "helper" not in self.processors:
+            self.processors["helper"] = processor
         else:
-            dest_dir = self.final_output_dir
+            logging.error("Platform cannot create duplicate helper processor!")
+            raise RuntimeError("Platform attempted to create duplicate helper processor!")
 
-        # Prepend the run name to the output path if dest_file not specified
-        if dest_file is None:
-            filename = output_path.strip("/").split("/")[-1]
-            dest_file = "{0}_{1}".format(self.name, filename)
+        return self.processors["helper"]
 
-        # Transfer output file
-        self.transfer(src_path=output_path,
-                      dest_dir=dest_dir,
-                      dest_file=dest_file,
-                      log_transfer=log_transfer,
-                      job_name=job_name)
-
-        # Return the new path
-        if dest_file is None:
-            return self.standardize_dir(dest_dir) + os.path.basename(output_path)
-        else:
-            return self.standardize_dir(dest_dir) + dest_file
-
-    def return_logs(self):
-
-        # Get the workspace log directory
-        log_dir     = self.get_workspace_dir(sub_dir="log")
-        job_name    = "return_logs"
-
-        # Transfer the log directory as final output
-        self.return_output(job_name, log_dir, log_transfer=False)
-
-        # Wait for transfer to complete
-        self.wait_process(job_name)
-
-    def wait_process(self, proc_name):
-        return self.main_processor.wait_process(proc_name)
-
-    def get_config(self):
-        return self.config
+    def can_make_processor(self, req_cpus, req_mem, req_disk_space):
+        cpu, mem, disk_space = self.__get_curr_usage()
+        cpu_overload    = cpu + req_cpus > self.TOTAL_NR_CPUS
+        mem_overload    = mem + req_mem > self.TOTAL_MEM
+        disk_overload   = disk_space + req_disk_space > self.TOTAL_DISK_SPACE
+        return (not cpu_overload) and (not mem_overload) and (not disk_overload) and (not self.__locked)
 
     def get_max_nr_cpus(self):
         return self.MAX_NR_CPUS
@@ -309,77 +131,97 @@ class Platform(object):
     def get_max_mem(self):
         return self.MAX_MEM
 
+    def get_max_disk_space(self):
+        return self.MAX_DISK_SPACE
+
+    def get_min_disk_space(self):
+        return self.MIN_DISK_SPACE
+
     def get_final_output_dir(self):
         return self.final_output_dir
 
-    def get_workspace_dir(self, sub_dir=None):
-        if sub_dir is None:
-            return self.workspace["wrk"]
-        else:
-            return self.workspace[sub_dir]
+    def get_wrk_dir(self):
+        return self.wrk_dir
 
-    def __link_path(self, src_path, dest_path):
-        # Create softlink
-        cmd         = "cp -rs %s %s" % (src_path, dest_path)
-        job_name    = "linking_file_%s_to_%s" % (os.path.basename(src_path), os.path.basename(dest_path))
-        self.main_processor.run(job_name, cmd)
+    def lock(self):
+        with self.platform_lock:
+            self.__locked = True
 
-    def finalize(self):
+    def unlock(self):
+        with self.platform_lock:
+            self.__locked = False
 
-        # Copy the logs to the bucket, if platform was launched
-        try:
-            if self.launched:
-                self.return_logs()
-        except BaseException as e:
-            logging.error("Could not return the logs to the output directory. "
-                          "The following error appeared: %s" % str(e))
+    def __check_processor(self, task_id, nr_cpus, mem, disk_space):
+        # Check that nr_cpus, mem, disk space are under max
+        err = False
+        if nr_cpus > self.MAX_NR_CPUS:
+            logging.error("Platform cannot provision processor for task '%s' with %d vCPUs. Maximum is %d vCPUs." %
+                          (task_id, nr_cpus, self.MAX_NR_CPUS))
+            err = True
+        elif mem > self.MAX_MEM:
+            logging.error("Platform cannot provision processor for task '%s' with %d GB RAM. Maximum is %d GB RAM." %
+                          (task_id, mem, self.MAX_MEM))
+            err = True
+        elif disk_space > self.MAX_DISK_SPACE:
+            logging.error("Platform cannot provision processor for task '%s' with %d GB disk space. Maximum is %d GB." %
+                          (task_id, mem, self.MAX_MEM))
+            err = True
+        if err:
+            raise InvalidProcessorError("Processor resource requirements exceed platform capacity for single processor!")
 
-        # Clean up the platform
-        self.clean_up()
+    def __check_resources(self):
+        err = False
+        if self.MAX_NR_CPUS > self.TOTAL_NR_CPUS:
+            logging.error("Platform config error! Max task cpus (%s) cannot exceed platform cpus (%s)!" %
+                          (self.MAX_NR_CPUS, self.TOTAL_NR_CPUS))
+            err = True
+        elif self.MAX_MEM > self.TOTAL_MEM:
+            logging.error("Platform config error! Max task mem (%sGB) cannot exceed platform mem (%sGB)!" %
+                          (self.MAX_MEM, self.TOTAL_MEM))
+            err = True
+        elif self.MAX_DISK_SPACE > self.TOTAL_DISK_SPACE:
+            logging.error("Platform config error! Max task disk space (%sGB) cannot exceed platform disk space (%sGB)!" % (
+                    self.MAX_DISK_SPACE, self.TOTAL_DISK_SPACE))
+            err = True
+
+        if err:
+            raise TaskPlatformResourceLimitError(
+                "Task resource limit (CPU/Mem/Disk space) cannot exceed platform resource limit!")
+
+    def __get_curr_usage(self):
+        # Return total cpus, mem, disk space currently in use on platform
+        with self.platform_lock:
+            procs = self.processors.values()
+        cpu = 0
+        mem = 0
+        disk_space = 0
+        for processor in procs:
+            if processor.get_status() > Processor.OFF:
+                cpu += processor.get_nr_cpus()
+                mem += processor.get_mem()
+                disk_space += processor.get_disk_space()
+        return cpu, mem, disk_space
 
     ####### ABSTRACT METHODS TO BE IMPLEMENTED BY INHERITING CLASSES
     @abc.abstractmethod
+    def init_task_processor(self, name, nr_cpus, mem, disk_space):
+        # Return a processor object with given resource requirements
+        pass
+
+    @abc.abstractmethod
+    def init_helper_processor(self, name, nr_cpus, mem, disk_space):
+        pass
+
+    @abc.abstractmethod
+    def publish_report(self, report):
+        pass
+
+    @abc.abstractmethod
+    def validate(self):
+        pass
+
+    @abc.abstractmethod
     def clean_up(self):
-        pass
-
-    @abc.abstractmethod
-    def define_config_spec_file(self):
-        # Return path to config spec file used to validate platform config
-        pass
-
-    @abc.abstractmethod
-    def create_processor(self, name, nr_cpus, mem):
-        # Return a processor ready to run a process requiring the given amount of CPUs and Memory
-        pass
-
-    @abc.abstractmethod
-    def create_main_processor(self):
-        # Initialize and return the main processor needed to load/manage the platform
-        pass
-
-    @abc.abstractmethod
-    def init_workspace(self):
-        # Create the workspace directories with the main processor
-        pass
-
-    @abc.abstractmethod
-    def path_exists(self, path):
-        # Determine if a path exists either locally on platform or remotely
-        pass
-
-    @abc.abstractmethod
-    def transfer(self, src_path, dest_dir, dest_file=None, log_transfer=True, job_name=None):
-        # Transfer a remote file from src_path to a local directory dest_dir
-        # Log the transfer unless otherwise specified
-        pass
-
-    @abc.abstractmethod
-    def mkdir(self, dir_path):
-        # Make a directory if it doesn't already exists
-        pass
-
-    @abc.abstractmethod
-    def handle_report(self, report):
         pass
 
     ####### PRIVATE UTILITY METHODS

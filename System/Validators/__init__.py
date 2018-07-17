@@ -1,5 +1,4 @@
 from Validator import Validator
 from GraphValidator import GraphValidator
-from PlatformValidator import PlatformValidator
-from ResourcesValidator import ResourcesValidator
 from SampleValidator import SampleValidator
+from InputValidator import InputValidator

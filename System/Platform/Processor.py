@@ -4,16 +4,25 @@ import abc
 from collections import OrderedDict
 import subprocess as sp
 import time
+import threading
 
 from System.Platform import Process
 
 class Processor(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, name, nr_cpus, mem, **kwargs):
+    # Instance status values available between threads
+    OFF         = 0  # Destroyed or not allocated on the cloud
+    CREATING    = 1  # Instance is being created
+    DESTROYING  = 2  # Instance is destroyed
+    AVAILABLE   = 3  # Available for running processes
+    MAX_STATUS  = 3  # Maximum status value possible
+
+    def __init__(self, name, nr_cpus, mem, disk_space, **kwargs):
         self.name       = name
         self.nr_cpus    = nr_cpus
         self.mem        = mem
+        self.disk_space = disk_space
 
         # Initialize the start and stop time
         self.start_time = None
@@ -22,16 +31,41 @@ class Processor(object):
         # Get name of directory where logs will be written
         self.log_dir    = kwargs.pop("log_dir", None)
 
+        # Get name of working directory
+        self.wrk_dir    = kwargs.pop("wrk_dir", "/data/")
+
+        # Per hour price of processor
+        self.price      = kwargs.pop("price",   0)
+
+        # Default number of times to retry commands if none specified at command runtime
+        self.default_num_cmd_retries = kwargs.pop("cmd_retries", 1)
+
         # Ordered dictionary of processing being run by processor
         self.processes  = OrderedDict()
 
+        # Setting the instance status
+        self.status_lock    = threading.Lock()
+        self.status         = Processor.OFF
+
+        # Lock for preventing further commands from being run on processor
+        self.locked = False
+        self.stopped = False
+
     def create(self):
-        pass
+        self.set_status(Processor.AVAILABLE)
 
-    def destroy(self):
-        pass
+    def destroy(self, wait=True):
+        self.set_status(Processor.OFF)
 
-    def run(self, job_name, cmd, num_retries=0):
+    def run(self, job_name, cmd, num_retries=None, docker_image=None, quiet_failure=False):
+
+        # Throw error if attempting to run command on stopped processor
+        if self.is_locked():
+            logging.error("(%s) Attempt to run process'%s' on locked processor!" % (self.name, job_name))
+            raise RuntimeError("Attempt to run command on locked processor!")
+
+        if num_retries is None:
+            num_retries = self.default_num_cmd_retries
 
         # Checking if logging is required
         if "!LOG" in cmd:
@@ -56,6 +90,10 @@ class Processor(object):
         # Save original command
         original_cmd = cmd
 
+        # Run in docker image if specified
+        if docker_image is not None:
+            cmd = "sudo docker run --rm --user root -v %s:%s %s /bin/bash -c '%s'" % (self.wrk_dir, self.wrk_dir, docker_image, cmd)
+
         # Make any modifications to the command to allow it to be run on a specific platform
         cmd = self.adapt_cmd(cmd)
 
@@ -74,6 +112,8 @@ class Processor(object):
         kwargs["stdout"] = sp.PIPE
         kwargs["stderr"] = sp.PIPE
         kwargs["num_retries"] = num_retries
+        kwargs["docker_image"] = docker_image
+        kwargs["quiet_failure"] = quiet_failure
 
         # Add process to list of processes
         self.processes[job_name] = Process(cmd, **kwargs)
@@ -83,11 +123,45 @@ class Processor(object):
         for proc_name, proc_obj in self.processes.iteritems():
             self.wait_process(proc_name)
 
+    def lock(self):
+        # Prevent any additional processes from being run
+        with threading.Lock():
+            self.locked = True
+
+    def unlock(self):
+        # Allow processes to run on processor
+        with threading.Lock():
+            self.locked = False
+
+    def stop(self):
+        # Lock so that no new processes can be run on processor
+        self.lock()
+
+        # Kill all currently executing processes on processor
+        for proc_name, proc_obj in self.processes.iteritems():
+            if not proc_obj.is_complete() and proc_name.lower() != "destroy":
+                logging.debug("Killing process: %s" % proc_name)
+                proc_obj.stop()
+
+    ############ Getters and Setters
+    def set_status(self, new_status):
+        # Updates instance status with threading.lock() to prevent race conditions
+        if new_status > Processor.MAX_STATUS or new_status < 0:
+            logging.debug("(%s) Status level %d not available!" % (self.name, new_status))
+            raise RuntimeError("Instance %s has failed!" % self.name)
+        with self.status_lock:
+            self.status = new_status
+
+    def get_status(self):
+        # Returns instance status with threading.lock() to prevent race conditions
+        with self.status_lock:
+            return self.status
+
     def set_log_dir(self, new_log_dir):
         self.log_dir = new_log_dir
 
-    def get_name(self):
-        return self.name
+    def set_wrk_dir(self, new_wrk_dir):
+        self.wrk_dir = new_wrk_dir
 
     def set_start_time(self):
         if self.start_time is None:
@@ -95,6 +169,13 @@ class Processor(object):
 
     def set_stop_time(self):
         self.stop_time = time.time()
+
+    def is_locked(self):
+        with self.status_lock:
+            return self.locked
+
+    def get_name(self):
+        return self.name
 
     def get_runtime(self):
         if self.start_time is None:
@@ -104,16 +185,28 @@ class Processor(object):
         else:
             return self.stop_time - self.start_time
 
+    def get_start_time(self):
+        return self.start_time
+
+    def get_nr_cpus(self):
+        return self.nr_cpus
+
+    def get_mem(self):
+        return self.mem
+
+    def get_disk_space(self):
+        return self.disk_space
+
+    def compute_cost(self):
+        # Compute running cost of current task processor
+        runtime = self.get_runtime()
+        return self.price * runtime / 3600
+
+    ############ Abstract methods
     @abc.abstractmethod
     def wait_process(self, proc_name):
         pass
 
     @abc.abstractmethod
-    def set_env_variable(self, env_variable, path):
-        pass
-
-    @abc.abstractmethod
     def adapt_cmd(self, cmd):
         pass
-
-

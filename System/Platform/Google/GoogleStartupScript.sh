@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Waiting for all the locks to be released and installing the apt daemon
-while [[ ! $(sudo apt-get install --yes aptdaemon) || ! $(aptdcon --version) ]]
+while [[ ! $(sudo apt-get update ; sudo apt-get install --yes aptdaemon) || ! $(aptdcon --version) ]]
 do
     echo "Waiting for the apt-get locks to be released!"
     sleep 2
@@ -25,4 +25,5 @@ sudo aptdcon --hide-terminal -c
 ############################################################################################*
 
 # Signal that instance is fully initialized
-gcloud --quiet compute instances add-metadata $(hostname) --metadata READY=TRUE
+ZONE=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/zone" -H "Metadata-Flavor: Google" | cut -d "/" -f 4)
+gcloud --quiet compute instances add-metadata $(hostname) --metadata READY=TRUE --zone ${ZONE}
