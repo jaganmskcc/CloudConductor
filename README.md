@@ -1,6 +1,6 @@
-<div align=center><img src="docs/_static/cloud-conductor-logo-colored.png" alt="Derp" width=450 height=225 align="middle"/></div>
+<div align=center><img src="docs/_static/cloud-conductor-logo-colored.png" alt="CC" width=450 height=225 align="middle"/></div>
 
-## What is CloudConductor?
+## CloudCounductor: Simplified Bioinformatics
 
 **CloudConductor** is a cloud-based workflow engine for defining and executing bioinformatics pipelines in a cloud environment. 
 Currently, the framework has been tested extensively on the [Google Cloud Platform](https://cloud.google.com/), but will eventually support other platforms including AWS, Azure, etc.
@@ -9,19 +9,20 @@ Currently, the framework has been tested extensively on the [Google Cloud Platfo
 
   * **User-friendly**
     * Define complex workflows by linking together user-defined modules that can be re-used across pipelines
-    * [Config_obj](http://configobj.readthedocs.io/en/latest/configobj.html) for clean, readable workflows (see below example)
-    * +50 pre-installed modules for existing bioinformatics tools
+    * [Config_obj](http://configobj.readthedocs.io/en/latest/configobj.html) for clean, readable workflows. See [Examples](http://cloudconductor.readthedocs.io/en/latest/).
+    * 50+ pre-installed modules for existing bioinformatics tools
   * **Portable**
     * Docker integration ensures reproducible runtime environment for modules    
-    * Platform independent (currently supports GCS; AWS, Azure to come)
+    * Platform independent (currently supports GCP; AWS, Azure to come)
   * **Modular/Extensible**
-    * User-defined Plug-N-Play modules
-      * Re-used across pipelines, re-combined in any combination
-      * Modules easily added, customized as new tools needed, old tools changed
-      * Eliminates copy/paste re-use of code across workflows 
+    * Plug-N-Play with user-defined task modules
+    * Easily re-use, re-combine across workflows
+      * Eliminates serial copy/paste
+    * Easily add or customize task modules as needed 
   * **Pre-Launch Type-Checking**
-    * Strongly-typed module declarations allow catching pipeline errors before they occur
-    * Pre-launch checks make sure all external files exist before runtime
+    * Strongly-typed task modules 
+      * Catch pipeline errors prior to runtime
+    * Pre-launch validation ensures pipeline success/failure
   * **Scalable**
     * Removes resource limitations imposed by cluster-based HPCCs
   * **Elastic**
