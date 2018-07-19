@@ -230,7 +230,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'CloudConductor.tex', u'CloudConductor Documentation',
-     u'Razvan Panea, Alex Waldrop, Tushar Dave', 'manual'),
+     u'CloudConductor authors', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
