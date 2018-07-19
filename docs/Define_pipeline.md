@@ -21,7 +21,7 @@ Please read the advanced topics if you would like to define your own modules and
 
 In a pipeline, a pipeline step is defined using the keywords ***module*** and ***submodule*** as following:
 
-    [unique_name_of_pipeline_step]
+    [*unique_name_of_pipeline_step*]
         module=*name_of_module*
         submodule=*name_of_submodule_used*
 
