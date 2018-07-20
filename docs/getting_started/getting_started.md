@@ -2,41 +2,46 @@
 
 Welcome to the CloudConductor documentation portal! Documentation is organized in following sections:
 
-  * Installation: Get CloudConductor on local linux running system.
-  * Beginner Tutorial: Learn to use CloudConductor with a quick and simple tutorial.
+  * [Installation]: Get CloudConductor on local linux running system.
+  * [Beginner Tutorial]: Learn to use CloudConductor with a quick and simple tutorial.
 
-## Looking for more information about CloudConductor please refer the follwoing sections:
+If you are Looking for more adavanced information about CloudCondutor, please check out our [Advanced Topics] section.
 
-The open source core
-Enterprise edition
-Use Cases
+If you are looking forward to develop with and for CloudConductor, refer the following sections:
+  * [How to create a module]
+  * [How to create a platform]
+  * [CloudConductor Hub]
 
-## Looking forward to develop with and for CloudConductor, refer the following sections:
+Need to see CloudConductor examples? You can find a bunch of them here:
+  * [Workflow example]
+  * [Resource kit example]
+  * [Sample sheet example]
+  * [Module example]
 
-Getting data into Pachyderm
-Creating analysis pipelines
-Distributed computing
-Incremental processing
-Getting data out of Pachyderm
-Updating pipelines
-Need to see different or more advanced Pachyderm examples? You can find a bunch of them here.
+If you have any question, please do checkout our [FAQ] section. We tried to cover all genral questions that one should 
+have regarding CloudConductor.
 
-Note - If you’ve already got a Kubernetes cluster running or would rather use AWS, GCE or Azure to deploy Pachyderm, check out our deployment guides.
+If you couldn't find what you were looking for?
 
-## Looking for more help
+  * Chat with us and our community on [Slack]
+  * Ping us at [@CloudConductor] on Twitter
+  * Post an issue on the issue tracker on [GitHub]
 
-Couldn't find what you were looking for?
+You can contribute to the CloudConductor in several manners. You can share your workflows and modules on 
+[CloudConductor Hub]. You can also fork the [Github] repo and send your pull request. We will be very happy to merge 
+your changes to the repo.
 
-Chat with us and our community on [Slack](https://google.com)
-Ping us at [@cloudconductor](https://google.com) on Twitter
-Post an issue on the documentation issue tracker on [GitHub](https://github.com/labdave/CloudConductor)
-
-## Community
-
-Download the modules that you need from [CloudConductor Hub](https://google.com)
-Get the support you needed on our [slack channel](https://google.com).
-Follow us on Twitter - [@cloudconductor](https://google.com)
-
-**Contribute**
-
-You can contribute to the project by sharing your workflows and modules on [CloudConductor Hub](https://google.com).
+[Installation]: (installation.md)
+[Beginner Tutorial]: (beginner_tutorial.md)
+[Advanced Topics]: (../advanced_topics.md)
+[How to create a module]: (../developer/creating_a_module.md)
+[How to create a platform]: (../developer/creating_a_platform.md)
+[Module example]: (https://google.com)
+[Workflow example]: (https://google.com)
+[Resource kit example]: (https://google.com)
+[Sample sheet example]: (https://google.com)
+[FAQ]: (../faq/faq.md)
+[Slack]: (https://google.com)
+[@CloudConductor]: (https://twitter.com/CloudConductor)
+[Github]: (https://github.com/labdave/CloudConductor)
+[CloudConductor Hub]: (https://google.com)
