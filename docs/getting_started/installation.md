@@ -66,13 +66,13 @@ After the Docker set up, please pull the **CloudConductor** Docker image from th
 the following command line:
 
 ```bash
-$ sudo docker pull davelab/cloudconductor
+$ sudo docker pull davelabhub/cloudconductor
 ```
 
 You can run **CloudConductor** as Docker container as follows:
 
 ```bash
-$ sudo docker run --rm --user root davelab/cloudconductor "cloudconductor --help"
+$ sudo docker run --rm --user root davelabhub/cloudconductor "cloudconductor --help"
 ``` 
 
 ## Install Google Cloud Platform SDK
