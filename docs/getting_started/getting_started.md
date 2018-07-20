@@ -18,18 +18,14 @@ Need to see CloudConductor examples? You can find a bunch of them here:
   * [Sample sheet example]
   * [Module example]
 
-## Looking for more help
-
 If you have any question, please do checkout our [FAQ] section. We tried to cover all genral questions that one should 
 have regarding CloudConductor.
 
-If you Couldnc't find what you were looking for?
+If you couldn't find what you were looking for?
 
   * Chat with us and our community on [Slack]
   * Ping us at [@CloudConductor] on Twitter
-  * Post an issue on the documentation issue tracker on [GitHub]
-
-## Contribute
+  * Post an issue on the issue tracker on [GitHub]
 
 You can contribute to the CloudConductor in several manners. You can share your workflows and modules on 
 [CloudConductor Hub]. You can also fork the [Github] repo and send your pull request. We will be very happy to merge 
