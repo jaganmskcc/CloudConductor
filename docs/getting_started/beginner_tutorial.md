@@ -130,19 +130,19 @@ raw data, etc. Following is sample sheet example. You can refer to [Sample Sheet
   "seq_platform": "Illumina",
   "samples": [
     {
-      "name": "5100_ce",
+      "name": "s1",
       "paths": {
-        "R1": "gs://davelab_temp/rnaseq_pe_test/5100_ce/CAV2EANXX_s3_1_I13_0124_SL245313.fastq.gz",
-        "R2": "gs://davelab_temp/rnaseq_pe_test/5100_ce/CAV2EANXX_s3_2_I13_0124_SL245313.fastq.gz"
+        "R1": "gs://your_desired_loc/s1_1_I13_0124.fastq.gz",
+        "R2": "gs://your_desired_loc/s1_2_I13_0124.fastq.gz"
       },
       "is_tumor": false,
       "lib_name": "LIB_NAME"
     },
     {
-      "name": "5100_cf",
+      "name": "s2",
       "paths": {
-        "R1": "gs://davelab_temp/rnaseq_pe_test/5100_cf/CAV2EANXX_s3_1_I15_0666_SL245314.fastq.gz",
-        "R2": "gs://davelab_temp/rnaseq_pe_test/5100_cf/CAV2EANXX_s3_1_I15_0666_SL245314.fastq.gz"
+        "R1": "gs://your_desired_loc/s2_1_I13_0124.fastq.gz",
+        "R2": "gs://your_desired_loc/s2_2_I13_0124.fastq.gz"
       },
       "is_tumor": false,
       "lib_name": "LIB_NAME"
