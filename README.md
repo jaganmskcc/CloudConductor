@@ -62,10 +62,10 @@ You will need to install and configure the following tools to run your pipelines
 
 3. Clone the **CloudConductor** repo
 
-  ```sh
-  # clone the repo
-  git clone https://github.com/labdave/CloudConductor.git
-  ```
+    ```sh
+    # clone the repo
+    git clone https://github.com/labdave/CloudConductor.git
+    ```
 
 4. [Google Cloud Platform](https://cloud.google.com/) SDK
 
