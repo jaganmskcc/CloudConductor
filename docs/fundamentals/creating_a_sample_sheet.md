@@ -1,4 +1,4 @@
-# 3. Define your input
+# Creating a sample sheet
 
 In **CloudConductor**, the main input of a pipeline is specified in a ***sample sheet***.
 Except three mandatory keys (*samples*, *name*, *paths*) any additional input keys specified in the sample sheet 
