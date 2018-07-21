@@ -1,6 +1,9 @@
 # Glossary
 
 <dl>
+  <dt> Run </dt>
+  <dd> A completed, successful or failed, execution of a pipeline using CloudConductor. </dd>
+
   <dt> Pipeline </dt>
   <dd> A directed graph or bioinformatics tools that are executed in a certain order. </dd>
 
@@ -28,6 +31,19 @@
   <dt> Platform </dt>
   <dd> A cloud computing service that runs a Pipeline. </dd>
 
-  <dt> </dt>
-  <dd> </dd>
+  <dt> Processor </dt>
+  <dd> An instance/server on a cloud computing platform. </dd>
+
+  <dt> Task </dt>
+  <dd> A command or set of instructions that a processor has to execute. </dd>
+
+  <dt> Worker </dt>
+  <dd> A processor that executes a task. </dd>
+
+  <dt> Final Report </dt>
+  <dd> A file containing the entire run metadata and statistics </dd>
+
+  <dt> Report topic </dt>
+  <dd> A messenging service that receives the final report of a run </dd>
+
 </dl>
