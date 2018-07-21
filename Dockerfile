@@ -2,15 +2,15 @@
 FROM ubuntu:16.04
 
 # Metadata
-LABEL base.image="gap:latest"
+LABEL base.image="CloudConductor:v0.1.1"
 LABEL version="1"
-LABEL software="GAP"
-LABEL software.version="latest"
+LABEL software="CloudConductor:v0.1.1"
+LABEL software.version="0.1.1"
 LABEL description="Bioinformatics cloud workflow management system."
-LABEL tags="NGS Cloud GAP GoogleCloud AWS Bioinformatics Workflow Pipeline"
+LABEL tags="NGS Cloud CloudConductor GoogleCloud AWS Bioinformatics Workflow Pipeline"
 
 # Maintainer
-MAINTAINER Alex Waldrop <alex.waldrop@duke.edu>
+MAINTAINER davelab  <lab.dave@gmail.com>
 
 # update the OS related packages
 RUN apt-get update -y &&\
@@ -30,8 +30,8 @@ ENV PATH /root/google-cloud-sdk/bin:$PATH
 RUN /bin/bash -c "gcloud components install beta --quiet"
 
 # Install gcloud
-RUN git clone https://github.com/alexwaldrop/GAP.git
+RUN git clone https://github.com/labdave/CloudConductor.git
 
-ENV PATH /GAP:$PATH
+ENV PATH /CloudConductor:$PATH
 
-CMD ["GAP.py"]
+CMD ["CloudConductor"]
