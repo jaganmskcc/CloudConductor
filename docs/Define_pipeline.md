@@ -38,6 +38,11 @@ For example, if you want to keep the indexed file after running `samtools index`
         submodule=Index
         final_output=bam_idx
 
+Additionally, using the keyword ***docker_image*** you are able to specify which Docker image from resource kit you want CloudConductor to use.
+If no ***docker_image*** is specified, then the tool executable is obtain from the external resources list from resource kit.
+
+More information about resources and Docker will be presented in the definition of the resource kit.
+
 ## Create a pipeline graph
 
 To create a pipeline graph, you need to connect the modules using the keyword ***input_from***.
@@ -48,6 +53,7 @@ The pipeline presented in **Figure 1** can be represented as following:
 
     [trim_reads]
         module=Trimmomatic
+        docker_image=Trimmomatic_docker
 
     [align_reads]
         module=BWA
@@ -57,12 +63,14 @@ The pipeline presented in **Figure 1** can be represented as following:
     [bam_indexing]
         module=Samtools
         submodule=Index
+        docker_image=Samtools_docker
         input_from=align_reads
         final_output=bam_idx
 
     [bam_summary]
         module=Samtools
         submodule=Flagstat
+        docker_image=Samtools_docker
         input_from=align_reads
         final_output=flagstat
 
