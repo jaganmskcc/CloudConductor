@@ -1,4 +1,4 @@
-# 2. Define resources
+# Defining a resource kit
 
 In **CloudConductor**, resources are defined by a configuration file named *resource kit*.
 This section will explain how to create a resource kit.
