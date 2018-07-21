@@ -1,4 +1,4 @@
-# 1. Define a pipeline
+# Creating a workflow
 
 In bioinformatics, a pipeline is defined as a sequence of bioinformatics tools that transform and analyze the input data. 
 A pipeline in CloudConductor is representes as a directed graph of modules, where a module is a bioinformatics tool.
