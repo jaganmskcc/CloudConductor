@@ -31,10 +31,8 @@ Contents:
     :caption: Advanced Topics
 
     advanced_topics/pipeline_configuration.md
-    advanced_topics/pipeline_configuration/splitting_and_merging_pipeline_tasks.md
-    advanced_topics/pipeline_configuration/advanced_settings.md
-    advanced_topics/resource_kit_configuration/advanced_settings.md
-    advanced_topics/platform_configuration/advanced_settings.md
+    advanced_topics/resource_kit_configuration.md
+    advanced_topics/platform_configuration.md
 
 .. toctree::
     :maxdepth: 1
