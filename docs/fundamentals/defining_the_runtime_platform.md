@@ -1,4 +1,4 @@
-# 3. Define the running platform
+# Defining the running platform
 
 Currently, CloudConductor is implemented and tested for [Google Cloud Platform](https://cloud.google.com/),
 however we are planning to develop new platform systems in the future. 
