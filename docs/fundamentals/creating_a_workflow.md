@@ -5,7 +5,7 @@ A pipeline in CloudConductor is representes as a directed graph of modules, wher
 Consider **Figure 1** as an example of a pipeline.
 
 <figure align="center">
-    <img src="_static/Figure1.png" alt="An example of a pipeline" />
+    <img src="../_static/Figure1.png" alt="An example of a pipeline" />
     <figcaption><b>Figure 1.</b> An example of a pipeline</figcaption>
 </figure>
 

@@ -10,7 +10,7 @@ The input sequencing reads can be aligned independently, thus the aligning proce
 For example, consider the simple pipeline presented in **Figure 2**.
 
 <figure align="center">
-    <img src="_static/Figure2.png" alt="An example of a small pipeline" />
+    <img src="../_static/Figure2.png" alt="An example of a small pipeline" />
     <figcaption><b>Figure 2.</b> An example of a small pipeline</figcaption>
 </figure>
 
@@ -32,7 +32,7 @@ The graph configuration file for the pipeline presented in **Figure 2** is:
 However, after implementing a `.fastq` file splitter and a `.bam` file merger, the new pipeline can be changed as presented in **Figure 3**.
 
 <figure align="center">
-    <img src="_static/Figure3.png" alt="An example of a parallel and fast pipeline" />
+    <img src="../_static/Figure3.png" alt="An example of a parallel and fast pipeline" />
     <figcaption><b>Figure 3.</b> An example of a parallel and fast pipeline</figcaption>
 </figure>
 
