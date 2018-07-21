@@ -1,11 +1,80 @@
 # 3. Define your input
 
-## Sample Sheet
+In **CloudConductor**, the main input of a pipeline is specified in a ***sample sheet***.
+Except three mandatory keys (*samples*, *name*, *paths*) any additional input keys specified in the sample sheet 
+are related to the modules used in the pipeline graph.
 
-### What is a sample sheet?
+The sample sheet is in JSON format and its template is as following:
 
-### How to create a sample sheet?
+```json
+{
+    "samples": 
+    [
+        {
+            "name": *name_of_sample1*,
+            "paths": {
+                *input_path_key1*: *path1*,
+                *input_path_key2*: *path2*,
+                ... 
+            }
+            *sample_specific_input_key1*: *value_key1*,
+            *sample_specific_input_key2*: *value_key2*,
+            ...
+        },
+        ...
+    ],
+    *general_input_key1*: *value1*,
+    *general_input_key2*: *value2*,
+    ...
+}
+```
 
-### Examples
+In the above template, the keys ***samples***, ***name*** and ***paths*** are mandatory as 
+they specify a list of samples, the name of the specific sample and the file data paths of the specific sample, respectively.
+You can specify any additional input keys at any level in the sample sheet, however sample-specific information
+should be specified at the sample level.
 
-d2ee13dfaafbc0573a1fce423cec5c59d827a68a
+Here are two example sample sheets:
+
+```json
+{
+    "paired_end": true,
+    "seq_platform": "Illumina",
+    "samples": 
+    [
+        {
+            "name": "S1",
+            "paths": {
+                "R1": "Illumina_S1_R1.fastq.gz",
+                "R2": "Illumina_S2_R2.fastq.gz"
+            },
+            "library_name": "PREP_S1",
+            "is_tumor": true
+        },
+        {
+            "name": "S2",
+            "paths":{
+                "R1": "Illumina_S2_R1.fastq.gz",
+                "R2": "Illumina_S2_R2.fastq.gz"
+            },
+            "library_name": "PREP_S2",
+            "is_tumor": false
+        }
+    ]
+}
+```
+
+````json
+{
+    "samples":
+    [
+        {
+            "name": "Variant2",
+            "paths": {
+                "vcf": "variants_S1_S2.vcf.gz",
+                "vcf_idx": "variants_S1_S2.vcf.gz.tbi"
+            }
+        }
+    ]
+}
+````
