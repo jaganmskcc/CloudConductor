@@ -32,7 +32,6 @@ Contents:
 
     advanced_topics/pipeline_configuration.md
     advanced_topics/resource_kit_configuration.md
-    advanced_topics/platform_configuration.md
 
 .. toctree::
     :maxdepth: 1
