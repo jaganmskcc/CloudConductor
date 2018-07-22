@@ -39,28 +39,6 @@ Contents:
     :caption: Developer Zone
 
     developer/creating_a_module.md
-    developer/creating_a_platform.md
-    developer/cloud_conductor_hub.md
-
-.. toctree::
-    :maxdepth: 1
-    :caption: Full Examples
-
-    examples/exomeseq.md
-    examples/rnaseq.md
-    examples/cnv.md
-    examples/under_development.md
-
-.. toctree::
-    :maxdepth: 1
-    :caption: CloundConductor Cookbook
-    cookbook/cookbook.md
-
-.. toctree::
-    :maxdepth: 1
-    :caption: FAQ
-
-    faq/faq.md
 
 .. toctree::
     :maxdepth: 1
@@ -73,4 +51,3 @@ Contents:
     :caption: About the authors
 
     authors/about.md
-    authors/connect.md
