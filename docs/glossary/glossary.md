@@ -17,7 +17,7 @@
   <dd> Functionality that one bioinformatics tools is providing. For example, <i>index</i> is Submodule for <i>samtools</i> Module </dd>
 
   <dt> Splitter </dt>
-  <dd> A <b>Module</b> that splits an input file into multiple output files. </dd>
+  <dd> A module that splits an input file into multiple output files. </dd>
 
   <dt> Merger </dt>
   <dd> A Module that merges multiple input files of the same type into one single output file. </dd>
