@@ -1,0 +1,9 @@
+[__many__]
+module          = string
+docker_image    = string(default=None)
+input_from      = force_list(default=list())
+final_output    = force_list(default=list())
+    [[args]]
+
+
+
