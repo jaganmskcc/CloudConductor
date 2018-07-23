@@ -58,7 +58,6 @@ For instance, the resource kit definition for `Trimmomatic` and `Samtools` is:
 
 In general, we highly recommend that you use resource through the Docker system as it will ensure the reproducibility of your pipeline. 
 However, you can also use the resources available on an external storage system, such as Google Cloud Storage.
-You can always define a new storage system by following the instructions in this [section](Advanced.html).
 
 The template to define a resource from an external storage system is the following:
 
