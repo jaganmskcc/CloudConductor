@@ -3,7 +3,7 @@
 ## Splittting and Merging tasks
 
 In **CloudConductor**, a large task can be processed as multiple smaller tasks using ***splitters*** and ***mergers***.
-In order to define a splitter and merger, please follow the instructions specified in [module creation](Developers.html#module) from developer's guide.
+In order to define a splitter and merger, please follow the instructions specified in [module creation](../developer/creating_a_module.html) from developer's guide.
 
 An example use for splitters and mergers is processing the sequencing reads.
 The input sequencing reads can be aligned independently, thus the aligning procedure can run in parallel.
