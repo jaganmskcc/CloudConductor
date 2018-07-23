@@ -79,12 +79,12 @@ $ sudo docker run --rm --user root davelabhub/cloudconductor "CloudConductor --h
 
 Follow the [instructions] on the official Google Cloud website.
 
-[Python]: (https://www.python.org/)
-[Python website]: (https://www.python.org/downloads/)
-[pip]: (https://packaging.python.org/guides/installing-using-linux-tools/)
-[Git]: (https://git-scm.com/downloads)
-[Google Cloud Platform]: (https://cloud.google.com/)
-[instructions]: (https://cloud.google.com/sdk/docs/downloads-interactive)
-[Docker]: (https://www.docker.com/)
-[Docker-client]: (https://docs.docker.com/install/)
-[Docker Hub]: (https://hub.docker.com/)
+[Python]: https://www.python.org/
+[Python website]: https://www.python.org/downloads/
+[pip]: https://packaging.python.org/guides/installing-using-linux-tools/
+[Git]: https://git-scm.com/downloads
+[Google Cloud Platform]: https://cloud.google.com/
+[instructions]: https://cloud.google.com/sdk/docs/downloads-interactive
+[Docker]: https://www.docker.com/
+[Docker-client]: https://docs.docker.com/install/
+[Docker Hub]: https://hub.docker.com/
