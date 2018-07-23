@@ -72,7 +72,7 @@ $ sudo docker pull davelabhub/cloudconductor
 You can run **CloudConductor** as Docker container as follows:
 
 ```bash
-$ sudo docker run --rm --user root davelabhub/cloudconductor "cloudconductor --help"
+$ sudo docker run --rm --user root davelabhub/cloudconductor "CloudConductor --help"
 ``` 
 
 ## Install Google Cloud Platform SDK
