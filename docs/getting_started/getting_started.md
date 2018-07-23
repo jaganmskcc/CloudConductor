@@ -16,8 +16,8 @@ If you couldn't find what you were looking for?
 You can contribute to the CloudConductor by forking the [Github] repo and sending your pull request. We will be very happy to merge 
 your changes to the repo.
 
-[Installation]: (installation.html)
-[Beginner Tutorial]: (beginner_tutorial.html)
-[Advanced Topics]: (../advanced_topics/pipeline_configuration.html)
-[How to create a module]: (../developer/creating_a_module.html)
-[Github]: (https://github.com/labdave/CloudConductor)
+[Installation]: installation.html
+[Beginner Tutorial]: beginner_tutorial.html
+[Advanced Topics]: ../advanced_topics/pipeline_configuration.html
+[How to create a module]: ../developer/creating_a_module.html
+[Github]: https://github.com/labdave/CloudConductor
