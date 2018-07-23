@@ -164,9 +164,9 @@ $ ./CloudConductor --name cc_run_1 \
                    -vvv
 ```
 
-[Installation]: (installation.md)
-[Workflow fundamentals]: (../fundamentals/creating_a_workflow.md)
-[Resouce Kit fundamentals]: (../fundamentals/defining_a_resource_kit.md)
-[Platform fundamentals]: (../fundamentals/defining_the_runtime_platform.md)
-[Sample Sheet fundamentals]: (../fundamentals/creating_a_sample_sheet.md)
-[Google Cloud Platform]: (https://cloud.google.com/)
+[Installation]: installation.html
+[Workflow fundamentals]: ../fundamentals/creating_a_workflow.html
+[Resouce Kit fundamentals]: ../fundamentals/creating_a_resource_kit.html
+[Platform fundamentals]: ../fundamentals/defining_the_runtime_platform.html
+[Sample Sheet fundamentals]: ../fundamentals/creating_a_sample_sheet.html
+[Google Cloud Platform]: https://cloud.google.com/
