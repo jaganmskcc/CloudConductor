@@ -134,7 +134,7 @@ class Graph(object):
     def __generate_graph(self):
 
         tasks  = OrderedDict()
-        adj_list  = {}
+        adj_list  = OrderedDict()
 
         for task_id in self.config:
             task_data           = self.config[task_id]
