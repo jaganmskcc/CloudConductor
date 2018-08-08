@@ -199,8 +199,8 @@ class PreemptibleInstance(Instance):
         # This signifies that the instance has initialized ssh and the instance environment is finalized
         cycle_count = 1
         # Waiting for 10 minutes for status to change from creating
-        while cycle_count < 300 and self.get_status() == Processor.CREATING and not self.is_locked():
-            time.sleep(2)
+        while cycle_count < 60 and self.get_status() == Processor.CREATING and not self.is_locked():
+            time.sleep(10)
             cycle_count += 1
 
         if self.is_locked():
