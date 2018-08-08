@@ -1,7 +1,7 @@
 import logging
 import os
 
-from System.Platform import StorageHelper, DockerHelper, Processor
+from System.Platform import StorageHelper, DockerHelper, Processor, Platform
 
 class ModuleExecutor(object):
 
@@ -36,28 +36,53 @@ class ModuleExecutor(object):
 
         # Load input files
         # Inputs: list containing remote files, local files, and docker images
-        seen = []
+        src_seen = []
+        dest_seen = []
         count = 1
         for task_input in inputs:
 
-            # Case: Transfer file into wrk directory if its not already there
-            if task_input.get_transferrable_path() not in seen:
+            # Directory where input will be transferred
+            dest_dir = self.workspace.get_wrk_dir()
 
-                # Transfer file to workspace directory
+            # Input filename after transfer (None = same as src)
+            dest_filename = None
+
+            # Case: Transfer file into wrk directory if its not already there
+            if task_input.get_transferrable_path() not in src_seen:
+
+                # Get name of file that's going to be transferred
                 src_path = task_input.get_transferrable_path()
                 job_name = "load_input_%s_%s_%s" % (self.task_id, task_input.get_type(), count)
-                logging.debug("Input path: %s, transfer path: %s" %(task_input.get_path(), src_path))
+                logging.debug("Input path: %s, transfer path: %s" % (task_input.get_path(), src_path))
+
+
+                # Check to see if transferring file would overwrite existing file
+                # (e.g. cuffquant.cxb from different src folders)
+                dest_filename = os.path.join(dest_dir, src_path.rstrip("/").split("/")[-1])
+                logging.debug("Orig Dest filename: {0}".format(dest_filename))
+                if dest_filename in dest_seen:
+                    # Add unique tag to destination filename to prevent overwrite
+                    dest_filename = "{0}_{1}".format(Platform.generate_unique_id(), task_input.filename)
+                    # Update dest path for transfer
+                    dest_path = os.path.join(dest_dir, dest_filename)
+                    logging.debug("New Dest filename: {0}".format(dest_path))
+                else:
+                    # Just transfer file into working directory without changing any names
+                    dest_path = dest_dir
+
+                # Move file to dest_path
                 self.storage_helper.mv(src_path=src_path,
-                                       dest_path=self.workspace.get_wrk_dir(),
+                                       dest_path=dest_path,
                                        job_name=job_name)
 
                 # Add transfer path to list of remote paths that have been transferred to local workspace
-                seen.append(src_path)
+                src_seen.append(src_path)
                 count += 1
                 job_names.append(job_name)
 
-            # Update path after transferring to wrk directory
-            task_input.update_path(new_dir=self.workspace.get_wrk_dir())
+            # Update path after transferring to wrk directory and add to list of files in working directory
+            task_input.update_path(new_dir=dest_dir, new_filename=dest_filename)
+            dest_seen.append(task_input.get_path())
             logging.debug("Updated path: %s" % task_input.get_path())
 
         # Wait for all processes to finish
