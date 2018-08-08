@@ -275,7 +275,7 @@ class Datastore(object):
             nr_cpus = max_cpus
 
         # CPUs > 'max' converted to maximum cpus
-        elif nr_cpus > max_cpus:
+        elif int(nr_cpus) > int(max_cpus):
             nr_cpus = max_cpus
 
         # Update module nr_cpus argument
@@ -292,7 +292,7 @@ class Datastore(object):
                 mem_expr = mem.lower()
                 mem = int(eval(mem_expr.replace("nr_cpus", str(nr_cpus))))
         # Set to platform max mem if over limit
-        if mem > max_mem:
+        if int(mem) > int(max_mem):
             mem = max_mem
         # Update module memory argument
         return int(mem)
