@@ -122,7 +122,7 @@ class GAPipeline(object):
         workspace = self.datastore.get_task_workspace()
         for dir_type, dir_path in workspace.get_workspace().iteritems():
             self.storage_helper.mkdir(dir_path=str(dir_path), job_name="mkdir_%s" % dir_type, wait=True)
-        logging.info("GAP run validated! Beginning pipeline execution.")
+        logging.info("CloudCounductor run validated! Beginning pipeline execution.")
 
     def run(self, rm_tmp_output_on_success=True):
         # Run until all tasks are complete
