@@ -4,7 +4,6 @@ import uuid
 import threading
 
 from Config import ConfigParser
-from Processor import Processor
 
 class TaskPlatformResourceLimitError(Exception):
     pass
@@ -60,6 +59,11 @@ class Platform(object):
         # Boolean flag to lock processor creation upon cleanup
         self.__locked = False
 
+        # Current resource levels
+        self.cpu = 0
+        self.mem = 0
+        self.disk_space = 0
+
     def get_processor(self, task_id, nr_cpus, mem, disk_space):
         # Initialize new processor and register with platform
 
@@ -81,19 +85,23 @@ class Platform(object):
         # Initialize new processor with enough CPU/mem/disk space to complete task
         logging.debug("(%s) Checking to see if processor is too big for platform..." % task_id)
         processor   = self.init_task_processor(name, nr_cpus, mem, disk_space)
+        proc_name   = processor.get_name()
         logging.debug("(%s) Platform sucessfully initialized processor for task!" % task_id)
 
         # Add to list of processors if not already there
         with self.platform_lock:
             logging.debug("(%s) We starting to put that processor in the spot..." % task_id)
-            if task_id not in self.processors:
-                self.processors[task_id] = processor
-                logging.debug("(%s) We put that processor in the spot!" % task_id)
+            if proc_name not in self.processors:
+                self.processors[proc_name]    = processor
+                self.cpu += processor.get_nr_cpus()
+                self.mem += processor.get_mem()
+                self.disk_space += processor.get_disk_space()
+                logging.debug("(%s) We put that processor in the spot!" % proc_name)
             else:
-                logging.error("Platform cannot create task processor with duplicate id: '%s'!" % task_id)
+                logging.error("Platform cannot create task processor with duplicate id: '%s'!" % proc_name)
                 raise RuntimeError("Platform attempted to create duplicate task processor!")
 
-        return self.processors[task_id]
+        return self.processors[proc_name]
 
     def get_helper_processor(self):
         # Initialize helper processor
@@ -111,7 +119,10 @@ class Platform(object):
 
         # Add to list of processors if not already there
         if "helper" not in self.processors:
-            self.processors["helper"] = processor
+            self.processors["helper"]   = processor
+            self.cpu += processor.get_nr_cpus()
+            self.mem += processor.get_mem()
+            self.disk_space += processor.get_disk_space()
         else:
             logging.error("Platform cannot create duplicate helper processor!")
             raise RuntimeError("Platform attempted to create duplicate helper processor!")
@@ -119,11 +130,22 @@ class Platform(object):
         return self.processors["helper"]
 
     def can_make_processor(self, req_cpus, req_mem, req_disk_space):
-        cpu, mem, disk_space = self.__get_curr_usage()
-        cpu_overload    = cpu + req_cpus > self.TOTAL_NR_CPUS
-        mem_overload    = mem + req_mem > self.TOTAL_MEM
-        disk_overload   = disk_space + req_disk_space > self.TOTAL_DISK_SPACE
+        logging.info("\n{0}".format(self.__get_curr_usage_string()))
+        with self.platform_lock:
+            cpu_overload    = self.cpu + req_cpus > self.TOTAL_NR_CPUS
+            mem_overload    = self.mem + req_mem > self.TOTAL_MEM
+            disk_overload   = self.disk_space + req_disk_space > self.TOTAL_DISK_SPACE
         return (not cpu_overload) and (not mem_overload) and (not disk_overload) and (not self.__locked)
+
+    def deallocate_resources(self, proc):
+        # Free-up resources being used by a processor
+        if not proc.get_name() in self.processors:
+            logging.error("Cannot de-allocate resources for processor '%s%! No processor with that ID found on platform!")
+            raise RuntimeError("Attempt to deallocate processor that doesn't exist on platform!")
+        with self.platform_lock:
+            self.cpu -= proc.get_nr_cpus()
+            self.mem -= proc.get_mem()
+            self.disk_space -= proc.get_disk_space()
 
     def get_max_nr_cpus(self):
         return self.MAX_NR_CPUS
@@ -188,19 +210,15 @@ class Platform(object):
             raise TaskPlatformResourceLimitError(
                 "Task resource limit (CPU/Mem/Disk space) cannot exceed platform resource limit!")
 
-    def __get_curr_usage(self):
-        # Return total cpus, mem, disk space currently in use on platform
-        with self.platform_lock:
-            procs = self.processors.values()
-        cpu = 0
-        mem = 0
-        disk_space = 0
-        for processor in procs:
-            if processor.get_status() > Processor.OFF:
-                cpu += processor.get_nr_cpus()
-                mem += processor.get_mem()
-                disk_space += processor.get_disk_space()
-        return cpu, mem, disk_space
+    def __get_curr_usage_string(self):
+        ret = "*********************\n"
+        ret = "Platform Usage\n"
+        ret += "*********************\n"
+        ret += "\tCPU: {0}\n".format(self.cpu)
+        ret += "\tMem: {0}\n".format(self.mem)
+        ret += "\tDisk Space: {0}\n".format(self.disk_space)
+        ret += "*********************\n"
+        return ret
 
     ####### ABSTRACT METHODS TO BE IMPLEMENTED BY INHERITING CLASSES
     @abc.abstractmethod
