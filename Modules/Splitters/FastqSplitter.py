@@ -1,4 +1,5 @@
 import math
+import logging
 
 from Modules import Splitter
 
@@ -22,10 +23,14 @@ class FastqSplitter(Splitter):
 
     def define_output(self):
         # Obtaining the arguments
+        R1          = self.get_argument("R1")
         R2          = self.get_argument("R2")
         max_nr_cpus = int(self.get_argument("max_nr_cpus"))
         nr_reads    = int(self.get_argument("nr_reads"))
         read_len    = int(self.get_argument("read_len"))
+
+        # Cut nr_reads by half if paired
+        nr_reads = nr_reads/2.0 if R2 is not None else nr_reads
 
         # Computing the number of lines to be split for each file considering:
         #  - The aligning speed which is in bps/vCPU
@@ -37,6 +42,21 @@ class FastqSplitter(Splitter):
         # Set number of lines per split to be access in get_command()
         self.nr_lines_per_split = nr_reads_per_split * 4
 
+        logging.debug("Num reads: %s" % nr_reads)
+        logging.debug("Num reads per split: %s" % nr_reads_per_split)
+        logging.debug("Num splits: %s" % nr_splits)
+        logging.debug("Num lines per split: %s" % self.nr_lines_per_split)
+
+        # Simply return if input doesn't need to be split
+        if nr_splits < 2:
+            split_id = "00"
+            self.make_split(split_id)
+            self.add_output(split_id, "R1", str(R1))
+            r2 = str(R2) if R2 is not None else None
+            self.add_output(split_id, "R2", r2)
+            self.add_output(split_id, "nr_cpus", max_nr_cpus, is_path=False)
+            return
+
         # Create new dictionary for each split
         for i in range(nr_splits - 1):
             # Generate filenames with split names as they'll appear after being generated with unix split function
@@ -44,11 +64,15 @@ class FastqSplitter(Splitter):
             r1_split = self.generate_unique_file_name(split_id=split_id, extension="R1.fastq")
             r2_split = self.generate_unique_file_name(split_id=split_id, extension="R2.fastq") if R2 is not None else None
 
+            logging.debug("We making a split in the loop!")
+
             # Create next split
             self.make_split(split_id)
             self.add_output(split_id, "R1", r1_split)
             self.add_output(split_id, "nr_cpus", max_nr_cpus, is_path=False)
             self.add_output(split_id, "R2", r2_split)
+
+        logging.debug("We making one final split!")
 
         # Create final split using remaining CPUs
         # Determine number of CPUs available for last split
@@ -73,6 +97,10 @@ class FastqSplitter(Splitter):
         R1          = self.get_argument("R1")
         R2          = self.get_argument("R2")
         nr_cpus     = self.get_argument("nr_cpus")
+
+        # Return if no splitting needs to be done
+        if len(self.output.keys()) < 2:
+            return None
 
         # Get output file prefix
         # Get output file basename
