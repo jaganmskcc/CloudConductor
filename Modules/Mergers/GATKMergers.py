@@ -208,6 +208,7 @@ class CatVariants(_GATKBase):
         self.add_argument("gvcf_idx",   is_required=True)
         self.add_argument("gatk",       is_required=True, is_resource=True)
         self.add_argument("ref",        is_required=True, is_resource=True)
+        self.add_argument("ref_dict",   is_required=True, is_resource=True)
         self.add_argument("nr_cpus",    is_required=True, default_value=2)
         self.add_argument("mem",        is_required=True, default_value=13)
         self.add_argument("java",       is_required=True, is_resource=True)

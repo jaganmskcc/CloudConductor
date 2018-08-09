@@ -46,8 +46,10 @@ class HaplotypeCaller(_GATKBase):
         self.define_base_args()
         self.add_argument("bam",                is_required=True)
         self.add_argument("bam_idx",            is_required=True)
-        self.add_argument("BQSR_report",        is_required=True)
+        self.add_argument("BQSR_report",        is_required=False)
+        self.add_argument("use_bqsr",           is_required=True, default_value=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
+        self.add_argument("ref_dict",           is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=8)
         self.add_argument("mem",                is_required=True, default_value=48)
 
@@ -68,6 +70,8 @@ class HaplotypeCaller(_GATKBase):
         XL      = self.get_argument("excluded_location")
         gvcf    = self.get_output("gvcf")
         gatk_cmd = self.get_gatk_command()
+        gatk_version = self.get_argument("gatk_version")
+        use_bqsr     = self.get_argument("use_bqsr")
 
         # Generating the haplotype caller options
         opts = list()
@@ -75,7 +79,7 @@ class HaplotypeCaller(_GATKBase):
         opts.append("-o %s" % gvcf)
         opts.append("-R %s" % ref)
         opts.append("-ERC GVCF")
-        if BQSR is not None:
+        if BQSR is not None and gatk_version < 4 and use_bqsr:
             opts.append("-BQSR %s" % BQSR)
 
         # Limit the locations to be processes
@@ -108,6 +112,7 @@ class PrintReads(_GATKBase):
         self.add_argument("bam_idx",            is_required=True)
         self.add_argument("BQSR_report",        is_required=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
+        self.add_argument("ref_dict",           is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=2)
         self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2.5")
 
@@ -152,6 +157,67 @@ class PrintReads(_GATKBase):
         # Generating command for GATK PrintReads
         return "%s PrintReads %s !LOG3!" % (gatk_cmd, " ".join(opts))
 
+class ApplyBQSR(_GATKBase):
+    # GATK 4 replacement for PrintReads
+    def __init__(self, module_id, is_docker=False):
+        super(ApplyBQSR, self).__init__(module_id, is_docker)
+        self.output_keys            = ["bam", "bam_idx"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("bam",                is_required=True)
+        self.add_argument("bam_idx",            is_required=True)
+        self.add_argument("BQSR_report",        is_required=True)
+        self.add_argument("ref",                is_required=True, is_resource=True)
+        self.add_argument("ref_dict",           is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",            is_required=True, default_value=2)
+        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2.5")
+
+    def define_output(self):
+        # Declare bam output filename
+        bam = self.generate_unique_file_name(extension=".recalibrated.bam")
+        bam_idx = "{0}.bai".format(bam)
+        self.add_output("bam", bam)
+        self.add_output("bam_idx", bam_idx)
+
+    def define_command(self):
+        # Obtaining the arguments
+        bam     = self.get_argument("bam")
+        BQSR    = self.get_argument("BQSR_report")
+        ref     = self.get_argument("ref")
+        L       = self.get_argument("location")
+        XL      = self.get_argument("excluded_location")
+        output_bam      = self.get_output("bam")
+        output_bam_idx  = self.get_output("bam_idx")
+        tmp_bam_idx     = str(output_bam_idx).replace(".bam.bai", ".bai")
+        gatk_cmd        = self.get_gatk_command()
+
+        # Generating the ApplyBQSR caller options
+        opts = list()
+        opts.append("-I %s" % bam)
+        opts.append("-O %s" % output_bam)
+        opts.append("-R %s" % ref)
+        opts.append("--bqsr-recal-file %s" % BQSR)
+
+        # Limit the locations to be processed
+        if L is not None:
+            if isinstance(L, list):
+                for included in L:
+                    opts.append("-L \"%s\"" % included)
+            else:
+                opts.append("-L \"%s\"" % L)
+        if XL is not None:
+            if isinstance(XL, list):
+                for excluded in XL:
+                    opts.append("-XL \"%s\"" % excluded)
+            else:
+                opts.append("-XL \"%s\"" % XL)
+
+        # Generating command for GATK PrintReads
+        bqsr_cmd = "%s ApplyBQSR %s !LOG3!" % (gatk_cmd, " ".join(opts))
+        mv_cmd = "mv %s %s !LOG2!" % (tmp_bam_idx, output_bam_idx)
+        return "%s ; %s" % (bqsr_cmd, mv_cmd)
+
 class BaseRecalibrator(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
@@ -165,8 +231,9 @@ class BaseRecalibrator(_GATKBase):
         self.add_argument("chrom_size_list",    is_required=False)
         self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("dbsnp",              is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",            is_required=True, default_value="MAX")
-        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2")
+        self.add_argument("ref_dict",           is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",            is_required=True, default_value=4)
+        self.add_argument("mem",                is_required=True, default_value=12)
         self.add_argument("max_nr_reads",       is_required=True, default_value=2.5*10**7)
 
     def define_output(self):
