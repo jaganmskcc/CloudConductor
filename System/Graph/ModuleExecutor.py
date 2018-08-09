@@ -69,6 +69,7 @@ class ModuleExecutor(object):
                 else:
                     # Just transfer file into working directory without changing any names
                     dest_path = dest_dir
+                    dest_filename = None
 
                 # Move file to dest_path
                 self.storage_helper.mv(src_path=src_path,
