@@ -47,16 +47,6 @@ class FastqSplitter(Splitter):
         logging.debug("Num splits: %s" % nr_splits)
         logging.debug("Num lines per split: %s" % self.nr_lines_per_split)
 
-        # Simply return if input doesn't need to be split
-        if nr_splits < 2:
-            split_id = "00"
-            self.make_split(split_id)
-            self.add_output(split_id, "R1", str(R1))
-            r2 = str(R2) if R2 is not None else None
-            self.add_output(split_id, "R2", r2)
-            self.add_output(split_id, "nr_cpus", max_nr_cpus, is_path=False)
-            return
-
         # Create new dictionary for each split
         for i in range(nr_splits - 1):
             # Generate filenames with split names as they'll appear after being generated with unix split function
@@ -97,10 +87,6 @@ class FastqSplitter(Splitter):
         R1          = self.get_argument("R1")
         R2          = self.get_argument("R2")
         nr_cpus     = self.get_argument("nr_cpus")
-
-        # Return if no splitting needs to be done
-        if len(self.output.keys()) < 2:
-            return None
 
         # Get output file prefix
         # Get output file basename
