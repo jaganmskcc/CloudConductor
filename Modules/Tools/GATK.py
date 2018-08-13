@@ -247,6 +247,8 @@ class BaseRecalibrator(_GATKBase):
         chrom_size_list = self.get_argument("chrom_size_list")
         ref             = self.get_argument("ref")
         dbsnp           = self.get_argument("dbsnp")
+        L               = self.get_argument("location")
+        XL              = self.get_argument("excluded_location")
         nr_cpus         = self.get_argument("nr_cpus")
         max_nr_reads    = self.get_argument("max_nr_reads")
         bqsr_report     = self.get_output("BQSR_report")
@@ -269,17 +271,31 @@ class BaseRecalibrator(_GATKBase):
         opts.append("-cov ContextCovariate")
 
         # Limit the number of reads processed
-        try:
-            if chrom_size_list is not None:
-                logging.info("Determining chromosomes to include for BQSR...")
-                chrom_list = BaseRecalibrator.__get_chrom_locations(chrom_size_list, max_nr_reads)
+        #try:
+        #    if chrom_size_list is not None:
+        #        logging.info("Determining chromosomes to include for BQSR...")
+        #        chrom_list = BaseRecalibrator.__get_chrom_locations(chrom_size_list, max_nr_reads)
                 # Add the minimum amount of chromosomes to exceed the max_read_nr
-                if chrom_list is not None:
-                    for chrom in chrom_list:
-                        opts.append("-L \"%s\"" % chrom)
-        except:
-            logging.error("Unable to determine the number of chromosomes for BQSR!")
-            raise
+        #        if chrom_list is not None:
+        #            for chrom in chrom_list:
+        #                opts.append("-L \"%s\"" % chrom)
+        #except:
+        #    logging.error("Unable to determine the number of chromosomes for BQSR!")
+        #    raise
+
+        # Limit the locations to be processed
+        if L is not None:
+            if isinstance(L, list):
+                for included in L:
+                    opts.append("-L \"%s\"" % included)
+            else:
+                opts.append("-L \"%s\"" % L)
+        if XL is not None:
+            if isinstance(XL, list):
+                for excluded in XL:
+                    opts.append("-XL \"%s\"" % excluded)
+            else:
+                opts.append("-XL \"%s\"" % XL)
 
         # Generating command for base recalibration
         return "{0} BaseRecalibrator {1} !LOG3!".format(gatk_cmd, " ".join(opts))
