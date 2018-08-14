@@ -151,6 +151,7 @@ class GAPipeline(object):
             logging.error("Unable to publish report!")
             if e.message != "":
                 logging.error("Received the following message:\n%s" % e.message)
+            raise
 
     def clean_up(self):
         # Destroy the helper processor if it exists
@@ -208,7 +209,10 @@ class GAPipeline(object):
                         file_path       = output_file.get_path()
                         is_final_output = file_type in task.get_final_output_keys()
                         file_size       = output_file.get_size()
-                        report.register_output_file(task_name, file_type, file_path, file_size, is_final_output)
+                        if is_final_output or err:
+                            # Only declare output files if file is final output file
+                            # OR file is temporary output file but pipeline failed
+                            report.register_output_file(task_name, file_type, file_path, file_size, is_final_output)
 
         return report
 
