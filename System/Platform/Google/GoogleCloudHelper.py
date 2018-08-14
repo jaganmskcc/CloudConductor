@@ -7,6 +7,7 @@ import base64
 import os
 import sys
 import math
+import zlib
 
 class GoogleCloudHelperError(Exception):
     pass
@@ -131,7 +132,7 @@ class GoogleCloudHelper:
         return msg_json["status"]
 
     @staticmethod
-    def send_pubsub_message(topic, message=None, attributes=None, encode=True):
+    def send_pubsub_message(topic, message=None, attributes=None, encode=True, compress=False):
         # Send a message to an existing Google cloud Pub/Sub topic
 
         # Return if message and attributes are both empty
@@ -141,6 +142,10 @@ class GoogleCloudHelper:
         # Parse the input message and attributes
         message = "" if message is None else message
         attributes = {} if attributes is None else attributes
+
+        # Compress the message if needed
+        if compress:
+            message = zlib.compress(message, 9)
 
         # Encode the message if needed
         if encode:
@@ -152,6 +157,8 @@ class GoogleCloudHelper:
         # Run command to publish message to the topic
         cmd = "gcloud --quiet --no-user-output-enabled pubsub topics publish %s --message \"%s\" --attribute=%s" \
               % (topic, message, attrs)
+
+        print cmd
 
         err_msg = "Could not send a message to Google Pub/Sub"
         GoogleCloudHelper.run_cmd(cmd, err_msg=err_msg)
