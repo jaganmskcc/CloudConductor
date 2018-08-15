@@ -1,4 +1,4 @@
-from Modules import Merger
+from Modules import Merger, PseudoMerger
 
 class _GATKBase(Merger):
 
@@ -17,7 +17,7 @@ class _GATKBase(Merger):
         gatk        = self.get_argument("gatk")
         mem         = self.get_argument("mem")
         java        = self.get_argument("java")
-        jvm_options = "-Xmx{0}G -Djava.io.tmpdir={1}".format(mem * 4 / 5, "/tmp/")
+        jvm_options = "-Xmx{0}G -Djava.io.tmpdir={1}".format(mem * 4/5, "/tmp/")
 
         # Determine numeric version of GATK
         gatk_version = self.get_argument("gatk_version")
@@ -252,8 +252,8 @@ class CatVariants(_GATKBase):
 
 class CombineGVCF(_GATKBase):
     # Merger module intended to merge gVCF files across multiple samples
-    def __init__(self, module_id):
-        super(CombineGVCF, self).__init__(module_id)
+    def __init__(self, module_id, is_docker=False):
+        super(CombineGVCF, self).__init__(module_id, is_docker)
         self.output_keys  = ["gvcf", "gvcf_idx"]
 
     def define_input(self):
@@ -308,3 +308,72 @@ class CombineGVCF(_GATKBase):
 
         # Generating the combine command
         return "{0} CombineGVCFs {1} !LOG3!".format(gatk_cmd, " ".join(opts))
+
+class GenomicsDBImport(PseudoMerger):
+    # Merger module intended to merge gVCF files across multiple samples
+    def __init__(self, module_id, is_docker=False):
+        super(GenomicsDBImport, self).__init__(module_id, is_docker)
+        self.output_keys  = ["genomicsDB"]
+
+    def define_input(self):
+        self.add_argument("java",           is_required=True, is_resource=True)
+        self.add_argument("gatk",           is_required=True, is_resource=True)
+        self.add_argument("gvcf",           is_required=True)
+        self.add_argument("gvcf_idx",       is_required=True)
+        self.add_argument("batch_size",     is_required=True,   default_value=50)
+        self.add_argument("interval_pad",   is_required=False,  default_value=None)
+        self.add_argument("nr_cpus",        is_required=True,   default_value=5)
+        self.add_argument("mem",            is_required=True,   default_value=15)
+        self.add_argument("location")
+        self.add_argument("excluded_location")
+
+    def define_output(self):
+        # Declare merged GVCF output filename
+        genomicsDB = self.generate_unique_file_name(extension="genomicsDB")
+        self.add_output("genomicsDB", genomicsDB)
+
+    def define_command(self):
+
+        # Obtaining the arguments
+        gatk            = self.get_argument("gatk")
+        mem             = self.get_argument("mem")
+        java            = self.get_argument("java")
+        gvcf_list       = self.get_argument("gvcf")
+        nr_cpus         = self.get_argument("nr_cpus")
+        batch_size      = self.get_argument("batch_size")
+        interval_pad    = self.get_argument("interval_pad")
+        L               = self.get_argument("location")
+        genomicsDB      = self.get_output("genomicsDB")
+
+        # Make JVM options and GATK command
+        jvm_options = "-Xmx{0}G -Xms{0}G -Djava.io.tmpdir={1}".format(mem * 3 / 5, "/tmp/")
+        gatk_cmd    = "{0} {1} -jar {2}".format(java, jvm_options, gatk)
+
+        # Generating the combine options
+        opts = list()
+
+        # Add input gvcfs
+        for gvcf_input in gvcf_list:
+            opts.append("-V {0}".format(gvcf_input))
+
+        # Add threads option
+        opts.append("--reader-threads {0}".format(nr_cpus))
+        opts.append("--batch-size {0}".format(batch_size))
+        opts.append("--genomicsdb-workspace-path {0}".format(genomicsDB))
+
+        # Add interval pad if necessary
+        if interval_pad is not None:
+            opts.append("-ip {0}".format(interval_pad))
+
+        # Limit the locations to be processes
+        if L is not None:
+            if isinstance(L, list):
+                for included in L:
+                        opts.append("-L \"%s\"" % included)
+            else:
+                opts.append("-L \"%s\"" % L)
+
+        # Generate command to make genomicsDB directory and run job
+        mkdir_cmd       = "sudo mkdir {0}".format(genomicsDB)
+        import_db_cmd   = "{0} GenomicsDBImport {1} !LOG3!".format(gatk_cmd, " ".join(opts))
+        return "{0} ; {1}".format(mkdir_cmd, import_db_cmd)
