@@ -122,7 +122,7 @@ class RecodeVCF(Module):
         if not self.is_docker:
             cmd = "sudo -H pip install -U pyvcf ; python %s --vcf %s --output %s --min-call-depth %s -vvv" % (recode_vcf_exec, vcf_in, recoded_vcf_out, min_call_depth)
         else:
-            cmd = "python %s --vcf %s --output %s --min-call-depth %s -vvv" % (recode_vcf_exec, vcf_in, recoded_vcf_out, min_call_depth)
+            cmd = "%s --vcf %s --output %s --min-call-depth %s -vvv" % (recode_vcf_exec, vcf_in, recoded_vcf_out, min_call_depth)
 
         # Optionally point to file specifying which vcf INFO fields to include in recoded output file
         if isinstance(info_columns, list):
@@ -180,7 +180,7 @@ class SummarizeVCF(Module):
         if not self.is_docker:
             cmd = "sudo -H pip install -U pyvcf ; python %s %s --vcf %s -vvv" % (summarize_vcf_exec, summary_type, vcf_in)
         else:
-            cmd = "python %s %s --vcf %s -vvv" % (summarize_vcf_exec, summary_type, vcf_in)
+            cmd = "%s %s --vcf %s -vvv" % (summarize_vcf_exec, summary_type, vcf_in)
 
         # Optionally point to file specifying which vcf INFO fields to include in recoded output file
         if max_records is not None:
