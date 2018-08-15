@@ -187,6 +187,7 @@ class Instance(Processor):
 
         # Retry start/destroy command
         if can_retry and proc_name in ["create", "destroy"]:
+            time.sleep(3)
             logging.warning("(%s) Process '%s' failed but we still got %s retries left. Re-running command!" % (self.name, proc_name, proc_obj.get_num_retries()))
             self.processes[proc_name] = Process(proc_obj.get_command(),
                                                 cmd=proc_obj.get_command(),
@@ -196,6 +197,7 @@ class Instance(Processor):
                                                 num_retries=proc_obj.get_num_retries() - 1)
         # Retry 'run' command
         elif can_retry:
+            time.sleep(3)
             logging.warning("(%s) Process '%s' failed but we still got %s retries left. Re-running command!" % (
             self.name, proc_name, proc_obj.get_num_retries()))
             self.run(job_name=proc_name,
