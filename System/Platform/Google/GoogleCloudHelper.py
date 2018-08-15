@@ -158,8 +158,6 @@ class GoogleCloudHelper:
         cmd = "gcloud --quiet --no-user-output-enabled pubsub topics publish %s --message \"%s\" --attribute=%s" \
               % (topic, message, attrs)
 
-        print cmd
-
         err_msg = "Could not send a message to Google Pub/Sub"
         GoogleCloudHelper.run_cmd(cmd, err_msg=err_msg)
 
