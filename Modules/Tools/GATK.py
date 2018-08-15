@@ -444,3 +444,61 @@ class BedToIntervalList(_GATKBase):
         interval_list   = self.get_output("interval_list")
 
         return "{0} BedToIntervalList -I {1} -O {2} -SD {3} !LOG3!".format(gatk_cmd, bed, interval_list, dict_file)
+
+class GenotypeGenomicsDB(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(GenotypeGenomicsDB, self).__init__(module_id, is_docker)
+        self.output_keys = ["vcf", "vcf_idx"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("genomicsDB", is_required=True)
+        self.add_argument("ref",        is_required=True, is_resource=True)
+        self.add_argument("ref_dict",   is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=4)
+        self.add_argument("mem",        is_required=True, default_value=16)
+
+    def define_output(self):
+        # Declare VCF output filename
+        vcf = self.generate_unique_file_name(extension=".vcf")
+        self.add_output("vcf", vcf)
+        # Declare VCF index output filename
+        vcf_idx = self.generate_unique_file_name(extension=".vcf.idx")
+        self.add_output("vcf_idx", vcf_idx)
+
+    def define_command(self):
+        # Get input arguments
+        genomics_db = self.get_argument("genomicsDB")
+        ref         = self.get_argument("ref")
+        L           = self.get_argument("location")
+        vcf         = self.get_output("vcf")
+
+        # Make JVM options and GATK command
+        gatk_cmd = self.get_gatk_command()
+
+        # Generating the haplotype caller options
+        opts = list()
+
+        if isinstance(genomics_db, list):
+            for gdb in genomics_db:
+                opts.append("-V gendb://{0}".format(gdb))
+        else:
+            opts.append("-V gendb://{0}".format(genomics_db))
+
+        opts.append("-O {0}".format(vcf))
+        opts.append("-R {0}".format(ref))
+
+        # Limit the locations to be processes
+        if L is not None:
+            if isinstance(L, list):
+                for included in L:
+                    opts.append("-L \"%s\"" % included)
+            else:
+                opts.append("-L \"%s\"" % L)
+
+            # Add option to restrict vcf to intervals
+            opts.append("--only-output-calls-starting-in-intervals")
+
+        # Generating command for base recalibration
+        return "{0} GenotypeGVCFs {1} !LOG3!".format(gatk_cmd, " ".join(opts))
