@@ -238,7 +238,7 @@ class TaskWorker(Thread):
             if e.message != "":
                 logging.error("Received following error:\n%s" % e.message)
 
-    def __compute_disk_requirements(self, input_files, docker_image, input_multiplier=5):
+    def __compute_disk_requirements(self, input_files, docker_image, input_multiplier=3):
         # Compute size of disk needed to store input/output files
         input_size = 0
 
@@ -249,7 +249,11 @@ class TaskWorker(Thread):
         # Add sizes of each input file
         for input_file in input_files:
             print input_file
-            input_size += input_file.get_size()
+            # Overestimate for gzipped files
+            if input_file.get_path().endswith(".gz"):
+                input_size += input_file.get_size()*4
+            else:
+                input_size += input_file.get_size()
 
         # Set size of desired disk
         disk_size = int(math.ceil(input_multiplier * input_size))
