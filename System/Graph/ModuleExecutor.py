@@ -41,6 +41,10 @@ class ModuleExecutor(object):
         count = 1
         for task_input in inputs:
 
+            # Don't transfer local files
+            if ":" not in task_input.get_path():
+                continue
+
             # Directory where input will be transferred
             dest_dir = self.workspace.get_wrk_dir()
 
