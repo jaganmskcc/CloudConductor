@@ -374,6 +374,4 @@ class GenomicsDBImport(PseudoMerger):
                 opts.append("-L \"%s\"" % L)
 
         # Generate command to make genomicsDB directory and run job
-        mkdir_cmd       = "sudo mkdir {0}".format(genomicsDB)
-        import_db_cmd   = "{0} GenomicsDBImport {1} !LOG3!".format(gatk_cmd, " ".join(opts))
-        return "{0} ; {1}".format(mkdir_cmd, import_db_cmd)
+        return "{0} GenomicsDBImport {1} !LOG3!".format(gatk_cmd, " ".join(opts))
