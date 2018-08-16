@@ -263,7 +263,7 @@ class TaskWorker(Thread):
         max_disk_size = self.platform.get_max_disk_space()
 
         # Must be at least as big as minimum disk size
-        disk_size = max(disk_size, min_disk_size)
+        disk_size = disk_size + min_disk_size
 
         # And smaller than max disk size
         disk_size = min(disk_size, max_disk_size)
