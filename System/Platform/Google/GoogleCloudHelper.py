@@ -8,6 +8,7 @@ import os
 import sys
 import math
 import zlib
+import time
 
 class GoogleCloudHelperError(Exception):
     pass
@@ -19,7 +20,7 @@ class GoogleCloudHelper:
     machine_types = None
 
     @staticmethod
-    def run_cmd(cmd, err_msg=None):
+    def run_cmd(cmd, err_msg=None, num_retries=3):
 
         # Running and waiting for the command
         proc = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
@@ -27,6 +28,11 @@ class GoogleCloudHelper:
 
         # Check if any error has appeared
         if len(err) != 0 and "error" in err.lower():
+            # Retry command if possible
+            if num_retries > 0:
+                # Wait five seconds to make sure its not a rate limiting error
+                time.sleep(5)
+                return GoogleCloudHelper.run_cmd(cmd, err_msg, num_retries=num_retries-1)
             logging.error("GoogleCloudHelper could not run the following command:\n%s" % cmd)
             if err_msg is not None:
                 logging.error("%s. The following error appeared:\n    %s" % (err_msg, err))
