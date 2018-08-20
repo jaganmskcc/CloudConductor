@@ -141,10 +141,10 @@ class GAPipeline(object):
     def save_progress(self):
         pass
 
-    def publish_report(self, err=False, err_msg=None):
+    def publish_report(self, err=False, err_msg=None, git_version=None):
         # Create and publish GAP pipeline report
         try:
-            report = self.__make_pipeline_report(err, err_msg)
+            report = self.__make_pipeline_report(err, err_msg, git_version)
             if self.platform is not None:
                 self.platform.publish_report(report)
         except BaseException, e:
@@ -168,10 +168,10 @@ class GAPipeline(object):
         if self.platform is not None:
             self.platform.clean_up()
 
-    def __make_pipeline_report(self, err, err_msg):
+    def __make_pipeline_report(self, err, err_msg, git_version):
 
         # Create a pipeline report that summarizes features of pipeline
-        report = GAPReport(self.pipeline_id, err, err_msg)
+        report = GAPReport(self.pipeline_id, err, err_msg, git_version)
 
         # Register helper runtime data
         if self.helper_processor is not None:
@@ -219,7 +219,7 @@ class GAPipeline(object):
 
 class GAPReport:
     # Object for holding metadata related to a GAP pipeline run
-    def __init__(self, pipeline_id, err=False, err_msg=None):
+    def __init__(self, pipeline_id, err=False, err_msg=None, git_version=None):
 
         # Id of pipeline being reports
         self.pipeline_id = pipeline_id
@@ -229,6 +229,9 @@ class GAPReport:
 
         # Error msg that halted pipelines
         self.err_msg = err_msg
+
+        # Git commit version
+        self.git_version = git_version
 
         # Total runtime
         self.total_runtime = 0
@@ -310,6 +313,7 @@ class GAPReport:
     def to_dict(self):
         report = OrderedDict()
         report["pipeline_id"] = self.pipeline_id
+        report["git_commit"] = self.git_version
         report["status"] = "Complete" if not self.err else "Failed"
         report["error"] = "" if self.err_msg is None else self.err_msg
         report["total_cost"] = self.total_cost
