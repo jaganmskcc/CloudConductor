@@ -122,7 +122,7 @@ class GAPipeline(object):
         workspace = self.datastore.get_task_workspace()
         for dir_type, dir_path in workspace.get_workspace().iteritems():
             self.storage_helper.mkdir(dir_path=str(dir_path), job_name="mkdir_%s" % dir_type, wait=True)
-        logging.info("GAP run validated! Beginning pipeline execution.")
+        logging.info("CloudCounductor run validated! Beginning pipeline execution.")
 
     def run(self, rm_tmp_output_on_success=True):
         # Run until all tasks are complete
@@ -141,16 +141,17 @@ class GAPipeline(object):
     def save_progress(self):
         pass
 
-    def publish_report(self, err=False, err_msg=None):
+    def publish_report(self, err=False, err_msg=None, git_version=None):
         # Create and publish GAP pipeline report
         try:
-            report = self.__make_pipeline_report(err, err_msg)
+            report = self.__make_pipeline_report(err, err_msg, git_version)
             if self.platform is not None:
                 self.platform.publish_report(report)
         except BaseException, e:
             logging.error("Unable to publish report!")
             if e.message != "":
                 logging.error("Received the following message:\n%s" % e.message)
+            raise
 
     def clean_up(self):
         # Destroy the helper processor if it exists
@@ -167,10 +168,10 @@ class GAPipeline(object):
         if self.platform is not None:
             self.platform.clean_up()
 
-    def __make_pipeline_report(self, err, err_msg):
+    def __make_pipeline_report(self, err, err_msg, git_version):
 
         # Create a pipeline report that summarizes features of pipeline
-        report = GAPReport(self.pipeline_id, err, err_msg)
+        report = GAPReport(self.pipeline_id, err, err_msg, git_version)
 
         # Register helper runtime data
         if self.helper_processor is not None:
@@ -208,14 +209,17 @@ class GAPipeline(object):
                         file_path       = output_file.get_path()
                         is_final_output = file_type in task.get_final_output_keys()
                         file_size       = output_file.get_size()
-                        report.register_output_file(task_name, file_type, file_path, file_size, is_final_output)
+                        if is_final_output or err:
+                            # Only declare output files if file is final output file
+                            # OR file is temporary output file but pipeline failed
+                            report.register_output_file(task_name, file_type, file_path, file_size, is_final_output)
 
         return report
 
 
 class GAPReport:
     # Object for holding metadata related to a GAP pipeline run
-    def __init__(self, pipeline_id, err=False, err_msg=None):
+    def __init__(self, pipeline_id, err=False, err_msg=None, git_version=None):
 
         # Id of pipeline being reports
         self.pipeline_id = pipeline_id
@@ -225,6 +229,9 @@ class GAPReport:
 
         # Error msg that halted pipelines
         self.err_msg = err_msg
+
+        # Git commit version
+        self.git_version = git_version
 
         # Total runtime
         self.total_runtime = 0
@@ -306,6 +313,7 @@ class GAPReport:
     def to_dict(self):
         report = OrderedDict()
         report["pipeline_id"] = self.pipeline_id
+        report["git_commit"] = self.git_version
         report["status"] = "Complete" if not self.err else "Failed"
         report["error"] = "" if self.err_msg is None else self.err_msg
         report["total_cost"] = self.total_cost

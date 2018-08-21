@@ -113,7 +113,7 @@ class GooglePlatform(Platform):
 
         # Send report to the Pub/Sub report topic if it's known to exist
         if self.report_topic_validated:
-            GoogleCloudHelper.send_pubsub_message(self.report_topic, message=str(report))
+            GoogleCloudHelper.send_pubsub_message(self.report_topic, message=str(report), encode=True, compress=True)
 
     def clean_up(self):
 

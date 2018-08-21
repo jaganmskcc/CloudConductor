@@ -1,7 +1,7 @@
 import logging
 
 from Modules import Module
-
+from System.Platform import Platform
 
 class _GATKBase(Module):
 
@@ -46,17 +46,20 @@ class HaplotypeCaller(_GATKBase):
         self.define_base_args()
         self.add_argument("bam",                is_required=True)
         self.add_argument("bam_idx",            is_required=True)
-        self.add_argument("BQSR_report",        is_required=True)
+        self.add_argument("BQSR_report",        is_required=False)
+        self.add_argument("use_bqsr",           is_required=True, default_value=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
+        self.add_argument("ref_dict",           is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=8)
         self.add_argument("mem",                is_required=True, default_value=48)
 
     def define_output(self):
         # Declare GVCF output filename
-        gvcf = self.generate_unique_file_name(extension=".g.vcf")
+        randomer = Platform.generate_unique_id()
+        gvcf = self.generate_unique_file_name(extension="{0}.g.vcf".format(randomer))
         self.add_output("gvcf", gvcf)
         # Declare GVCF index output filename
-        gvcf_idx = self.generate_unique_file_name(extension=".g.vcf.idx")
+        gvcf_idx = self.generate_unique_file_name(extension="{0}.g.vcf.idx".format(randomer))
         self.add_output("gvcf_idx", gvcf_idx)
 
     def define_command(self):
@@ -68,6 +71,8 @@ class HaplotypeCaller(_GATKBase):
         XL      = self.get_argument("excluded_location")
         gvcf    = self.get_output("gvcf")
         gatk_cmd = self.get_gatk_command()
+        gatk_version = self.get_argument("gatk_version")
+        use_bqsr     = self.get_argument("use_bqsr")
 
         # Generating the haplotype caller options
         opts = list()
@@ -75,7 +80,7 @@ class HaplotypeCaller(_GATKBase):
         opts.append("-o %s" % gvcf)
         opts.append("-R %s" % ref)
         opts.append("-ERC GVCF")
-        if BQSR is not None:
+        if BQSR is not None and gatk_version < 4 and use_bqsr:
             opts.append("-BQSR %s" % BQSR)
 
         # Limit the locations to be processes
@@ -108,6 +113,7 @@ class PrintReads(_GATKBase):
         self.add_argument("bam_idx",            is_required=True)
         self.add_argument("BQSR_report",        is_required=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
+        self.add_argument("ref_dict",           is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=2)
         self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2.5")
 
@@ -152,6 +158,67 @@ class PrintReads(_GATKBase):
         # Generating command for GATK PrintReads
         return "%s PrintReads %s !LOG3!" % (gatk_cmd, " ".join(opts))
 
+class ApplyBQSR(_GATKBase):
+    # GATK 4 replacement for PrintReads
+    def __init__(self, module_id, is_docker=False):
+        super(ApplyBQSR, self).__init__(module_id, is_docker)
+        self.output_keys            = ["bam", "bam_idx"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("bam",                is_required=True)
+        self.add_argument("bam_idx",            is_required=True)
+        self.add_argument("BQSR_report",        is_required=True)
+        self.add_argument("ref",                is_required=True, is_resource=True)
+        self.add_argument("ref_dict",           is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",            is_required=True, default_value=2)
+        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2.5")
+
+    def define_output(self):
+        # Declare bam output filename
+        bam = self.generate_unique_file_name(extension=".recalibrated.bam")
+        bam_idx = "{0}.bai".format(bam)
+        self.add_output("bam", bam)
+        self.add_output("bam_idx", bam_idx)
+
+    def define_command(self):
+        # Obtaining the arguments
+        bam     = self.get_argument("bam")
+        BQSR    = self.get_argument("BQSR_report")
+        ref     = self.get_argument("ref")
+        L       = self.get_argument("location")
+        XL      = self.get_argument("excluded_location")
+        output_bam      = self.get_output("bam")
+        output_bam_idx  = self.get_output("bam_idx")
+        tmp_bam_idx     = str(output_bam_idx).replace(".bam.bai", ".bai")
+        gatk_cmd        = self.get_gatk_command()
+
+        # Generating the ApplyBQSR caller options
+        opts = list()
+        opts.append("-I %s" % bam)
+        opts.append("-O %s" % output_bam)
+        opts.append("-R %s" % ref)
+        opts.append("--bqsr-recal-file %s" % BQSR)
+
+        # Limit the locations to be processed
+        if L is not None:
+            if isinstance(L, list):
+                for included in L:
+                    opts.append("-L \"%s\"" % included)
+            else:
+                opts.append("-L \"%s\"" % L)
+        if XL is not None:
+            if isinstance(XL, list):
+                for excluded in XL:
+                    opts.append("-XL \"%s\"" % excluded)
+            else:
+                opts.append("-XL \"%s\"" % XL)
+
+        # Generating command for GATK PrintReads
+        bqsr_cmd = "%s ApplyBQSR %s !LOG3!" % (gatk_cmd, " ".join(opts))
+        mv_cmd = "mv %s %s !LOG2!" % (tmp_bam_idx, output_bam_idx)
+        return "%s ; %s" % (bqsr_cmd, mv_cmd)
+
 class BaseRecalibrator(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
@@ -165,8 +232,9 @@ class BaseRecalibrator(_GATKBase):
         self.add_argument("chrom_size_list",    is_required=False)
         self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("dbsnp",              is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",            is_required=True, default_value="MAX")
-        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2")
+        self.add_argument("ref_dict",           is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",            is_required=True, default_value=4)
+        self.add_argument("mem",                is_required=True, default_value=12)
         self.add_argument("max_nr_reads",       is_required=True, default_value=2.5*10**7)
 
     def define_output(self):
@@ -180,6 +248,8 @@ class BaseRecalibrator(_GATKBase):
         chrom_size_list = self.get_argument("chrom_size_list")
         ref             = self.get_argument("ref")
         dbsnp           = self.get_argument("dbsnp")
+        L               = self.get_argument("location")
+        XL              = self.get_argument("excluded_location")
         nr_cpus         = self.get_argument("nr_cpus")
         max_nr_reads    = self.get_argument("max_nr_reads")
         bqsr_report     = self.get_output("BQSR_report")
@@ -202,17 +272,31 @@ class BaseRecalibrator(_GATKBase):
         opts.append("-cov ContextCovariate")
 
         # Limit the number of reads processed
-        try:
-            if chrom_size_list is not None:
-                logging.info("Determining chromosomes to include for BQSR...")
-                chrom_list = BaseRecalibrator.__get_chrom_locations(chrom_size_list, max_nr_reads)
+        #try:
+        #    if chrom_size_list is not None:
+        #        logging.info("Determining chromosomes to include for BQSR...")
+        #        chrom_list = BaseRecalibrator.__get_chrom_locations(chrom_size_list, max_nr_reads)
                 # Add the minimum amount of chromosomes to exceed the max_read_nr
-                if chrom_list is not None:
-                    for chrom in chrom_list:
-                        opts.append("-L \"%s\"" % chrom)
-        except:
-            logging.error("Unable to determine the number of chromosomes for BQSR!")
-            raise
+        #        if chrom_list is not None:
+        #            for chrom in chrom_list:
+        #                opts.append("-L \"%s\"" % chrom)
+        #except:
+        #    logging.error("Unable to determine the number of chromosomes for BQSR!")
+        #    raise
+
+        # Limit the locations to be processed
+        if L is not None:
+            if isinstance(L, list):
+                for included in L:
+                    opts.append("-L \"%s\"" % included)
+            else:
+                opts.append("-L \"%s\"" % L)
+        if XL is not None:
+            if isinstance(XL, list):
+                for excluded in XL:
+                    opts.append("-XL \"%s\"" % excluded)
+            else:
+                opts.append("-XL \"%s\"" % XL)
 
         # Generating command for base recalibration
         return "{0} BaseRecalibrator {1} !LOG3!".format(gatk_cmd, " ".join(opts))
@@ -361,3 +445,61 @@ class BedToIntervalList(_GATKBase):
         interval_list   = self.get_output("interval_list")
 
         return "{0} BedToIntervalList -I {1} -O {2} -SD {3} !LOG3!".format(gatk_cmd, bed, interval_list, dict_file)
+
+class GenotypeGenomicsDB(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(GenotypeGenomicsDB, self).__init__(module_id, is_docker)
+        self.output_keys = ["vcf", "vcf_idx"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("genomicsDB", is_required=True)
+        self.add_argument("ref",        is_required=True, is_resource=True)
+        self.add_argument("ref_dict",   is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=4)
+        self.add_argument("mem",        is_required=True, default_value=16)
+
+    def define_output(self):
+        # Declare VCF output filename
+        vcf = self.generate_unique_file_name(extension=".vcf")
+        self.add_output("vcf", vcf)
+        # Declare VCF index output filename
+        vcf_idx = self.generate_unique_file_name(extension=".vcf.idx")
+        self.add_output("vcf_idx", vcf_idx)
+
+    def define_command(self):
+        # Get input arguments
+        genomics_db = self.get_argument("genomicsDB")
+        ref         = self.get_argument("ref")
+        L           = self.get_argument("location")
+        vcf         = self.get_output("vcf")
+
+        # Make JVM options and GATK command
+        gatk_cmd = self.get_gatk_command()
+
+        # Generating the haplotype caller options
+        opts = list()
+
+        if isinstance(genomics_db, list):
+            for gdb in genomics_db:
+                opts.append("-V gendb://{0}".format(gdb))
+        else:
+            opts.append("-V gendb://{0}".format(genomics_db))
+
+        opts.append("-O {0}".format(vcf))
+        opts.append("-R {0}".format(ref))
+
+        # Limit the locations to be processes
+        if L is not None:
+            if isinstance(L, list):
+                for included in L:
+                    opts.append("-L \"%s\"" % included)
+            else:
+                opts.append("-L \"%s\"" % L)
+
+            # Add option to restrict vcf to intervals
+            opts.append("--only-output-calls-starting-in-intervals")
+
+        # Generating command for base recalibration
+        return "{0} GenotypeGVCFs {1} !LOG3!".format(gatk_cmd, " ".join(opts))

@@ -48,6 +48,7 @@ class PreemptibleInstance(Instance):
         self.destroy()
 
         # Add record to cost history of last run
+        logging.debug("({0}) Appending to cost history: {1}, {2}, {3}".format(self.name, prev_price, prev_start, self.stop_time))
         self.cost_history.append((prev_price, prev_start, self.stop_time))
 
         # Removing old process(es)
@@ -94,8 +95,15 @@ class PreemptibleInstance(Instance):
             runtime = self.stop_time - self.start_time
 
         # Add previous runtimes from restart history
+        if len(self.cost_history) > 0:
+            print "Instance runtime records: {0}".format(self.name)
         for record in self.cost_history:
-            runtime += record[2] - record[1]
+            if record[1] is None or record[2] is None:
+                print "THIS ONE WOULD HAVE FAILED: "
+            print record
+            end = record[2] if record[2] is not None else 0
+            start = record[1] if record[1] is not None else 0
+            runtime += end - start
         return runtime
 
     def compute_cost(self):
@@ -111,7 +119,10 @@ class PreemptibleInstance(Instance):
             cost = (self.stop_time - self.start_time) * self.price
 
         for record in self.cost_history:
-            cost += (record[2]-record[1]) * record[0]
+            end = record[2] if record[2] is not None else 0
+            start = record[1] if record[1] is not None else 0
+            price = record[0] if record[0] is not None else 0
+            cost += (end-start) * price
 
         return cost/3600
 
@@ -173,6 +184,7 @@ class PreemptibleInstance(Instance):
 
         # Retry start/destroy command
         elif can_retry and proc_name in ["create", "destroy"]:
+            time.sleep(3)
             logging.warning("(%s) Process '%s' failed but we still got %s retries left. Re-running command!" % (self.name, proc_name, proc_obj.get_num_retries()))
             self.processes[proc_name] = Process(proc_obj.get_command(),
                                                 cmd=proc_obj.get_command(),
@@ -182,6 +194,7 @@ class PreemptibleInstance(Instance):
                                                 num_retries=proc_obj.get_num_retries() - 1)
         # Retry 'run' command
         elif can_retry:
+            time.sleep(3)
             logging.warning("(%s) Process '%s' failed but we still got %s retries left. Re-running command!" % (
             self.name, proc_name, proc_obj.get_num_retries()))
             self.run(job_name=proc_name,
@@ -199,8 +212,8 @@ class PreemptibleInstance(Instance):
         # This signifies that the instance has initialized ssh and the instance environment is finalized
         cycle_count = 1
         # Waiting for 10 minutes for status to change from creating
-        while cycle_count < 300 and self.get_status() == Processor.CREATING and not self.is_locked():
-            time.sleep(2)
+        while cycle_count < 60 and self.get_status() == Processor.CREATING and not self.is_locked():
+            time.sleep(10)
             cycle_count += 1
 
         if self.is_locked():

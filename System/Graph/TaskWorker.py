@@ -231,13 +231,14 @@ class TaskWorker(Thread):
             if not "destroy" in self.proc.processes:
                 self.proc.destroy(wait=False)
             # Wait until processor is destroyed
+            self.platform.deallocate_resources(self.proc)
             self.proc.wait_process("destroy")
         except BaseException, e:
             logging.error("Unable to destroy processor '%s' for task '%s'" % (self.proc.get_name(), self.task.get_ID()))
             if e.message != "":
                 logging.error("Received following error:\n%s" % e.message)
 
-    def __compute_disk_requirements(self, input_files, docker_image, input_multiplier=2):
+    def __compute_disk_requirements(self, input_files, docker_image, input_multiplier=3):
         # Compute size of disk needed to store input/output files
         input_size = 0
 
@@ -248,7 +249,11 @@ class TaskWorker(Thread):
         # Add sizes of each input file
         for input_file in input_files:
             print input_file
-            input_size += input_file.get_size()
+            # Overestimate for gzipped files
+            if input_file.get_path().endswith(".gz"):
+                input_size += input_file.get_size()*5
+            else:
+                input_size += input_file.get_size()
 
         # Set size of desired disk
         disk_size = int(math.ceil(input_multiplier * input_size))
@@ -258,7 +263,7 @@ class TaskWorker(Thread):
         max_disk_size = self.platform.get_max_disk_space()
 
         # Must be at least as big as minimum disk size
-        disk_size = max(disk_size, min_disk_size)
+        disk_size = disk_size + min_disk_size
 
         # And smaller than max disk size
         disk_size = min(disk_size, max_disk_size)

@@ -35,7 +35,7 @@ class Annovar(Module):
         dbdir       = self.get_argument("dbdir")
 
         # Generate prefix for final VCF output file
-        vcf_out = self.get_output("vcf").rsplit(".hg19_multianno.vcf", 1)[0]
+        vcf_out = str(self.get_output("vcf")).rsplit(".hg19_multianno.vcf", 1)[0]
 
         cmd = "{0} {1} {2} {3} --vcfinput --remove --buildver {4} --outfile {5} --protocol {6} --operation {7} --nastring {8} !LOG3!".format\
                 (perl, annovar, vcf_in, dbdir, buildver, vcf_out, protocol, operation, nastring)

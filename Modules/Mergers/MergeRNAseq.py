@@ -158,9 +158,12 @@ class Cuffnorm(Merger):
 
     def define_output(self):
 
-        self.add_output("expression_file", "genes.fpkm_table")
-        self.add_output("genes_count_table", "genes.count_table")
-        self.add_output("genes_attr_table", "genes.attr_table")
+        expr_file   = os.path.join(self.get_output_dir(), "genes.fpkm_table")
+        count_file  = os.path.join(self.get_output_dir(), "genes.count_table")
+        attr_file   = os.path.join(self.get_output_dir(), "genes.attr_table")
+        self.add_output("expression_file", expr_file)
+        self.add_output("genes_count_table", count_file)
+        self.add_output("genes_attr_table", attr_file)
 
     def define_command(self):
 
