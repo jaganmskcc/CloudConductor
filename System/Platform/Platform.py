@@ -64,6 +64,8 @@ class Platform(object):
         self.mem = 0
         self.disk_space = 0
 
+        self.dealloc_procs = []
+
     def get_processor(self, task_id, nr_cpus, mem, disk_space):
         # Initialize new processor and register with platform
 
@@ -146,6 +148,7 @@ class Platform(object):
             self.cpu -= proc.get_nr_cpus()
             self.mem -= proc.get_mem()
             self.disk_space -= proc.get_disk_space()
+            self.dealloc_procs.append(proc.get_name())
 
     def get_max_nr_cpus(self):
         return self.MAX_NR_CPUS

@@ -120,29 +120,42 @@ class GooglePlatform(Platform):
         logging.info("Cleaning up Google Cloud Platform.")
         # Remove dummy files from output directory
         try:
+            logging.debug("Looking for dummy files...")
             dummy_search_string = os.path.join(self.final_output_dir,"**dummy.txt")
             dummy_outputs = GoogleCloudHelper.ls(dummy_search_string)
+
+            # Build one giant delete command
+            cmd = ""
             for dummy_output in dummy_outputs:
-                cmd         = "gsutil rm %s" % dummy_output
-                proc        = sp.Popen(cmd, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
-                proc.communicate()
+                cmd += "gsutil rm %s; " % dummy_output
+
+            # Remove final semi-colon if there is one
+            if len(cmd) > 0:
+                cmd = cmd[0:-2]
+
+            # Run it and delete any dummy files
+            proc = sp.Popen(cmd, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
+            proc.communicate()
+            logging.debug("Done killing dummy files!")
         except:
             logging.warning("(%s) Could not remove dummy input files on google cloud!")
 
         # Initiate destroy process on all the instances that haven't been destroyed
         for instance_name, instance_obj in self.processors.iteritems():
             try:
-                instance_obj.destroy(wait=False)
+                if instance_name not in self.dealloc_procs:
+                    instance_obj.destroy(wait=False)
             except RuntimeError:
                 logging.warning("(%s) Could not destroy instance!" % instance_name)
 
         # Now wait for all destroy processes to finish
         for instance_name, instance_obj in self.processors.iteritems():
             try:
-                if instance_obj.get_status() != Processor.OFF:
+                #if instance_obj.get_status() != Processor.OFF:
+                if instance_name not in self.dealloc_procs:
                     instance_obj.wait_process("destroy")
             except RuntimeError:
-                logging.warning("(%s) Could not destroy instance!" % instance_name)
+                logging.warning("(%s) Unable to destroy instance!" % instance_name)
 
         logging.info("Clean up complete!")
 
