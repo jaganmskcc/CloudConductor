@@ -123,19 +123,10 @@ class GooglePlatform(Platform):
             logging.debug("Looking for dummy files...")
             dummy_search_string = os.path.join(self.final_output_dir,"**dummy.txt")
             dummy_outputs = GoogleCloudHelper.ls(dummy_search_string)
-
-            # Build one giant delete command
-            cmd = ""
-            for dummy_output in dummy_outputs:
-                cmd += "gsutil rm %s; " % dummy_output
-
-            # Remove final semi-colon if there is one
-            if len(cmd) > 0:
-                cmd = cmd[0:-2]
-
-            # Run it and delete any dummy files
-            proc = sp.Popen(cmd, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
-            proc.communicate()
+            if len(dummy_outputs) > 0:
+                cmd = "gsutil rm {0}".format(" ".join(dummy_outputs))
+                proc = sp.Popen(cmd, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
+                proc.communicate()
             logging.debug("Done killing dummy files!")
         except:
             logging.warning("(%s) Could not remove dummy input files on google cloud!")
