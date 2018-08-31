@@ -15,11 +15,6 @@ class ModuleExecutor(object):
 
     def load_input(self, inputs):
 
-        if self.processor.get_status() is Processor.OFF:
-            # Create processor if it's off
-            logging.info("Creating processor '%s' for task '%s'!" % (self.processor.get_name(), self.task_id))
-            self.processor.create()
-
         # Create workspace directory structure
         self.__create_workspace()
 
