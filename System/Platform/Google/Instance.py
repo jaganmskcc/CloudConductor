@@ -39,7 +39,7 @@ class Instance(Processor):
         self.cost = 0
 
         # Flag for whether startup script has completed running
-        self.__startup_script_complete = False
+        self.startup_script_complete = False
 
     def get_status(self):
         with self.status_lock:
@@ -92,6 +92,7 @@ class Instance(Processor):
 
         # Wait for startup script to completely finish
         logging.debug("(%s) Waiting for instance startup-script completion..." % self.name)
+        self.startup_script_complete = False
         self.wait_until_ready()
         logging.debug("(%s) Instance startup complete! %s Now live and ready to run commands!" % (self.name, self.name))
 
@@ -205,13 +206,14 @@ class Instance(Processor):
         # Wait until startup-script has completed on instance
         # This signifies that the instance has initialized ssh and the instance environment is finalized
         cycle_count = 1
-        curr_status = self.get_status()
-
         # Waiting for 20 minutes for status to change from creating
-        while cycle_count < 60 and curr_status == Processor.CREATING and not self.is_locked():
+        while cycle_count < 60 and not self.startup_script_complete and not self.is_locked():
             time.sleep(20)
             cycle_count += 1
-            curr_status = self.get_status()
+            self.startup_script_complete = self.poll_startup_script()
+
+        # Get current status from Google
+        curr_status = self.get_status()
 
         if self.is_locked():
             logging.debug("(%s) Instance locked while waiting for creation!" % self.name)
@@ -278,27 +280,27 @@ class Instance(Processor):
     def __poll_status(self):
 
         if not GoogleCloudHelper.instance_exists(self.name):
-            self.__startup_script_complete = False
+            self.startup_script_complete = False
             return Processor.OFF
 
         # Try to get instance status
         status = GoogleCloudHelper.get_instance_status(self.name, self.zone)
         if status in ["TERMINATED", "STOPPING"]:
-            self.__startup_script_complete = False
+            self.startup_script_complete = False
             return Processor.DESTROYING
 
         elif status in ["PROVISIONING", "STAGING"]:
-            self.__startup_script_complete = False
+            self.startup_script_complete = False
             return Processor.CREATING
 
         elif status == "RUNNING":
-            if self.__startup_script_complete or self.__poll_startup_script():
-                self.__startup_script_complete = True
+            if self.startup_script_complete or self.poll_startup_script():
+                self.startup_script_complete = True
                 return Processor.AVAILABLE
-            self.__startup_script_complete = False
+            self.startup_script_complete = False
             return Processor.CREATING
 
-    def __poll_startup_script(self):
+    def poll_startup_script(self):
         # Return true if instance is currently available for running commands
         data = GoogleCloudHelper.describe(self.name, self.zone)
         # Check to see if "READY" has been added to instance metadata indicating startup-script has complete

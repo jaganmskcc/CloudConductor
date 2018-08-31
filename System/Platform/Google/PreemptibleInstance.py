@@ -213,13 +213,14 @@ class PreemptibleInstance(Instance):
         # Wait until startup-script has completed on instance
         # This signifies that the instance has initialized ssh and the instance environment is finalized
         cycle_count = 1
-        curr_status = self.get_status()
-
         # Waiting for 20 minutes for status to change from creating
-        while cycle_count < 60 and curr_status == Processor.CREATING and not self.is_locked():
+        while cycle_count < 60 and not self.startup_script_complete and not self.is_locked():
             time.sleep(20)
             cycle_count += 1
-            curr_status = self.get_status()
+            self.startup_script_complete = self.poll_startup_script()
+
+        # Get current status from Google
+        curr_status = self.get_status()
 
         if self.is_locked():
             logging.debug("(%s) Instance locked while waiting for creation!" % self.name)
