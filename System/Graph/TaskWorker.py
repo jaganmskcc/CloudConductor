@@ -196,7 +196,7 @@ class TaskWorker(Thread):
         # Cancel pipeline during runtime
 
         # Don't do anything if task has already finished or is finishing
-        if self.get_status() in [self.FINALIZING, self.COMPLETE, self.CANCELLING, self.FINALIZED]:
+        if self.get_status() in [self.COMPLETE, self.CANCELLING, self.FINALIZED]:
             return
 
         # Set pipeline to cancelling and stop any currently running jobs
