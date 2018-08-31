@@ -18,6 +18,7 @@ class GoogleCloudHelper:
 
     prices = None
     machine_types = None
+    active_zones = None
 
     @staticmethod
     def run_cmd(cmd, err_msg=None, num_retries=3):
@@ -43,6 +44,9 @@ class GoogleCloudHelper:
     @staticmethod
     def get_active_zones(region=None):
         # Return list of zones in a region
+
+        if GoogleCloudHelper.active_zones is not None:
+            return GoogleCloudHelper.active_zones
 
         # Run command to get list of zones
         cmd         = "gcloud compute zones list --format=json"
