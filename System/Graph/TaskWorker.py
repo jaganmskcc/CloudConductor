@@ -40,6 +40,9 @@ class TaskWorker(Thread):
         # Processor for executing task
         self.proc       = None
 
+        # Garbage collector for destroying instance on cancellation
+        self.garbage_collector = None
+
         # Module command executor
         self.module_executor = None
 
@@ -204,6 +207,9 @@ class TaskWorker(Thread):
         if self.proc is not None:
             # Prevent further commands from being run on processor
             self.proc.stop()
+            # Start garbage collector thread to destroy processor
+            self.garbage_collector = GarbageCollector(proc=self.proc)
+            self.garbage_collector.start()
 
     def is_success(self):
         return not self.__err
@@ -275,3 +281,18 @@ class TaskWorker(Thread):
     def __check_cancelled(self):
         if self.__cancelled:
             raise RuntimeError("(%s) Task failed due to cancellation!")
+
+class GarbageCollector(threading.Thread):
+    def __init__(self, proc):
+        super(GarbageCollector, self).__init__()
+
+        # Setting node thread as daemon
+        self.daemon = True
+
+        # Setting a variable for error message that might appear
+        self.proc = proc
+
+    def run(self):
+        logging.debug("GarbageCollector destroying processor: {0}".format(self.proc.get_name()))
+        self.proc.destroy(wait=True)
+
