@@ -138,10 +138,10 @@ class Processor(object):
         self.lock()
 
         # Kill all currently executing processes on processor
-        for proc_name, proc_obj in self.processes.iteritems():
-            if not proc_obj.is_complete() and proc_name.lower() != "destroy":
-                logging.debug("Killing process: %s" % proc_name)
-                proc_obj.stop()
+        #for proc_name, proc_obj in self.processes.iteritems():
+        #    if not proc_obj.is_complete() and proc_name.lower() != "destroy":
+        #        logging.debug("Killing process: %s" % proc_name)
+        #        proc_obj.stop()
 
     ############ Getters and Setters
     def set_status(self, new_status):
