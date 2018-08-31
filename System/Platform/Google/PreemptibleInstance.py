@@ -132,7 +132,7 @@ class PreemptibleInstance(Instance):
         can_retry   = False
         needs_reset = False
 
-        logging.warning("(%s) Handling failure for proc '%s'. Curr status: %s" % (self.name, proc_name, self.get_status()))
+        logging.warning("(%s) Handling failure for proc '%s'" % (self.name, proc_name))
         logging.debug("(%s) Error code: %s" % (self.name, proc_obj.returncode))
         
         if proc_obj.returncode == 255:
@@ -143,15 +143,17 @@ class PreemptibleInstance(Instance):
         if self.is_locked() and proc_name != "destroy":
             self.raise_error(proc_name, proc_obj)
 
+        curr_status = self.get_status()
+
         # Re-run any command (except create) if instance is up and cmd can be retried
-        elif self.get_status() == Processor.AVAILABLE:
+        if curr_status == Processor.AVAILABLE:
             can_retry = proc_obj.get_num_retries() > 0 and proc_name != "create"
 
         # Re-run destroy command if instance is creating and cmd has enough retries
-        elif self.get_status() == Processor.CREATING:
+        elif curr_status == Processor.CREATING:
             can_retry = proc_name == "destroy" and proc_obj.get_num_retries() > 0
 
-        elif self.get_status() == Processor.DESTROYING:
+        elif curr_status == Processor.DESTROYING:
             # Re-run destroy command
 
             # Instance is destroying itself and we know why (we killed it programmatically)
@@ -162,7 +164,7 @@ class PreemptibleInstance(Instance):
             elif "destroy" not in self.processes and proc_name not in ["create", "destroy"]:
                 needs_reset = True
 
-        elif self.get_status() == Processor.OFF:
+        elif curr_status == Processor.OFF:
             # Don't do anythying if destroy failed but instance doesn't actually exist anymore
             if proc_name == "destroy":
                 return
@@ -211,22 +213,25 @@ class PreemptibleInstance(Instance):
         # Wait until startup-script has completed on instance
         # This signifies that the instance has initialized ssh and the instance environment is finalized
         cycle_count = 1
-        # Waiting for 10 minutes for status to change from creating
-        while cycle_count < 60 and self.get_status() == Processor.CREATING and not self.is_locked():
-            time.sleep(10)
+        curr_status = self.get_status()
+
+        # Waiting for 20 minutes for status to change from creating
+        while cycle_count < 60 and curr_status == Processor.CREATING and not self.is_locked():
+            time.sleep(20)
             cycle_count += 1
+            curr_status = self.get_status()
 
         if self.is_locked():
             logging.debug("(%s) Instance locked while waiting for creation!" % self.name)
             raise RuntimeError("(%s) Instance locked while waiting for creation!" % self.name)
 
         # Run any commands necessary to make instance ready to run if startup script finished
-        elif self.get_status() == Processor.AVAILABLE:
+        elif curr_status == Processor.AVAILABLE:
             logging.debug("(%s) Waiting for additional startup commands to run..." % self.name)
             self.configure_instance()
 
         # Handle what happends if processor is being/has been destroyed
-        elif self.get_status() in [Processor.DESTROYING, Processor.OFF]:
+        elif curr_status in [Processor.DESTROYING, Processor.OFF]:
             if "destroy" in self.processes:
                 logging.debug("(%s) Instance destroyed while waiting for creation!" % self.name)
                 raise RuntimeError("(%s) Instance destroyed while waiting for creation!" % self.name)

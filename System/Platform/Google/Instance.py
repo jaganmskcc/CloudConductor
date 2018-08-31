@@ -55,13 +55,7 @@ class Instance(Processor):
 
     def create(self):
 
-        # Begin running command to create the instance on Google Cloud
-        if not self.get_status() == Processor.OFF:
-            logging.error("(%s) Cannot create processor! One with that name already exits with current status: %s" % (
-                self.name, self.get_status()))
-            raise RuntimeError("Processor can only be created if it's 'OFF'!")
-
-        elif self.is_locked():
+        if self.is_locked():
             logging.error("(%s) Failed to create processor. Processor locked!" % self.name)
             raise RuntimeError("Cannot create processor while locked!")
 
@@ -102,10 +96,6 @@ class Instance(Processor):
         logging.debug("(%s) Instance startup complete! %s Now live and ready to run commands!" % (self.name, self.name))
 
     def destroy(self, wait=True):
-
-        # Return if instance has already been destroyed
-        if self.get_status() == Processor.OFF:
-            return
 
         # Set status to indicate that instance cannot run commands and is destroying
         logging.info("(%s) Process 'destroy' started!" % self.name)
@@ -171,18 +161,20 @@ class Instance(Processor):
         if self.is_locked() and proc_name != "destroy":
             self.raise_error(proc_name, proc_obj)
 
-        elif self.get_status() == Processor.OFF:
+        curr_status = self.get_status()
+
+        if curr_status == Processor.OFF:
             if proc_name == "destroy":
                 return
             can_retry = proc_name == "create" and proc_obj.get_num_retries() > 0
 
-        elif self.get_status() == Processor.CREATING:
+        elif curr_status == Processor.CREATING:
             can_retry = proc_name == "destroy" and proc_obj.get_num_retries() > 0
 
-        elif self.get_status() == Processor.AVAILABLE:
+        elif curr_status == Processor.AVAILABLE:
             can_retry = proc_obj.get_num_retries() > 0 and proc_name != "create"
 
-        elif self.get_status() == Processor.DESTROYING:
+        elif curr_status == Processor.DESTROYING:
             can_retry = proc_name == "destroy" and proc_obj.get_num_retries() > 0
 
         # Retry start/destroy command
@@ -213,22 +205,25 @@ class Instance(Processor):
         # Wait until startup-script has completed on instance
         # This signifies that the instance has initialized ssh and the instance environment is finalized
         cycle_count = 1
-        # Waiting for 10 minutes for status to change from creating
-        while cycle_count < 60 and self.get_status() == Processor.CREATING and not self.is_locked():
-            time.sleep(10)
+        curr_status = self.get_status()
+
+        # Waiting for 20 minutes for status to change from creating
+        while cycle_count < 60 and curr_status == Processor.CREATING and not self.is_locked():
+            time.sleep(20)
             cycle_count += 1
+            curr_status = self.get_status()
 
         if self.is_locked():
             logging.debug("(%s) Instance locked while waiting for creation!" % self.name)
             raise RuntimeError("(%s) Instance locked while waiting for creation!" % self.name)
 
         # Run any commands necessary to make instance ready to run if startup script finished
-        elif self.get_status() == Processor.AVAILABLE:
+        elif curr_status == Processor.AVAILABLE:
             logging.debug("(%s) Waiting for additional startup commands to run..." % self.name)
             self.configure_instance()
 
-        # Handle what happends if processor is being/has been destroyed
-        elif self.get_status() in [Processor.DESTROYING, Processor.OFF]:
+        # Handle what happens if processor is being/has been destroyed
+        elif curr_status in [Processor.DESTROYING, Processor.OFF]:
             logging.debug("(%s) Instance destroyed while waiting for creation!" % self.name)
             raise RuntimeError("(%s) Instance destroyed while waiting for creation!" % self.name)
 
@@ -278,6 +273,7 @@ class Instance(Processor):
                         logging.error("Received the following error:\n%s" % e.message)
                     raise
                 retries -= 1
+                time.sleep(5)
 
     def __poll_status(self):
 
