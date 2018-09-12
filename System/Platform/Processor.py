@@ -38,7 +38,7 @@ class Processor(object):
         self.price      = kwargs.pop("price",   0)
 
         # Default number of times to retry commands if none specified at command runtime
-        self.default_num_cmd_retries = kwargs.pop("cmd_retries", 1)
+        self.default_num_cmd_retries = kwargs.pop("cmd_retries", 3)
 
         # Ordered dictionary of processing being run by processor
         self.processes  = OrderedDict()
