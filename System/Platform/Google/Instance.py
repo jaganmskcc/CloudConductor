@@ -97,6 +97,9 @@ class Instance(Processor):
         logging.debug("(%s) Waiting for instance startup-script completion..." % self.name)
         self.startup_script_complete = False
         self.wait_until_ready()
+
+        # Increase number of SSH connections
+        self.__configure_SSH()
         logging.debug("(%s) Instance startup complete! %s Now live and ready to run commands!" % (self.name, self.name))
 
     def destroy(self, wait=True):
@@ -313,6 +316,27 @@ class Instance(Processor):
             if item["key"] == "READY":
                 return True
         return False
+
+    def __configure_SSH(self, max_connections=500, log=False):
+
+        # Increase the number of concurrent SSH connections
+        logging.info(
+            "(%s) Increasing the number of maximum concurrent SSH connections to %s." % (self.name, max_connections))
+        if log:
+            cmd = "sudo bash -c 'echo \"MaxStartups %s\" >> /etc/ssh/sshd_config' !LOG2! " % max_connections
+        else:
+            cmd = "sudo bash -c 'echo \"MaxStartups %s\" >> /etc/ssh/sshd_config' " % max_connections
+        self.run("configureSSH", cmd)
+        self.wait_process("configureSSH")
+
+        # Restart SSH daemon to load the settings
+        logging.info("(%s) Restarting SSH daemon to load the new settings." % self.name)
+        if log:
+            cmd = "sudo service sshd restart !LOG3!"
+        else:
+            cmd = "sudo service sshd restart"
+        self.run("restartSSH", cmd)
+        self.wait_process("restartSSH")
 
     def __get_gcloud_create_cmd(self):
         # Create base command
