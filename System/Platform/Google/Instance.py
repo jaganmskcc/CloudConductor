@@ -213,8 +213,8 @@ class Instance(Processor):
         # This signifies that the instance has initialized ssh and the instance environment is finalized
         cycle_count = 1
         # Waiting for 10 minutes for instance metadata to be set to READY
-        while cycle_count < 60 and not self.startup_script_complete and not self.is_locked():
-            time.sleep(10)
+        while cycle_count < 10 and not self.startup_script_complete and not self.is_locked():
+            time.sleep(60)
             cycle_count += 1
             self.startup_script_complete = self.poll_startup_script()
 
