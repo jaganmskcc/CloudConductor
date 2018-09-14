@@ -33,11 +33,11 @@ class GoogleCloudHelper:
             if num_retries > 0:
                 # Sleep for a brief period before retrying if error due to api rate limit
                 if "Rate Limit" in err:
-                    sleep_time = random.randint(10,120)
+                    sleep_time = random.randint(30,240)
                     logging.warning("GoogleCloudHelper failed due to rate limit issue. "
                                     "Sleeping for %s seconds before re-trying...\n"
                                     "Failed cmd:\t%s" % (sleep_time, cmd))
-                    time.sleep(random.randint(10, 180))
+                    time.sleep(sleep_time)
                 return GoogleCloudHelper.run_cmd(cmd, err_msg, num_retries=num_retries-1)
             logging.error("GoogleCloudHelper could not run the following command:\n%s" % cmd)
             if err_msg is not None:
