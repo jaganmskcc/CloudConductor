@@ -52,14 +52,12 @@ class StorageHelper(object):
 
         # Run command and return job name
         job_name = "check_exists_%s" % Platform.generate_unique_id() if job_name is None else job_name
-        self.proc.run(job_name, cmd, quiet_failure=True, **kwargs)
+        self.proc.run(job_name, cmd, quiet_failure=False, **kwargs)
 
         # Wait for cmd to finish and get output
         try:
-            out, err = self.proc.wait_process(job_name)
-            if len(err) != 0:
-                logging.debug("StorageHelper error for %s:\n%s" % (job_name, err))
-            return len(err) == 0
+            self.proc.wait_process(job_name)
+            return True
         except RuntimeError, e:
             if e.message != "":
                 logging.debug("StorageHelper error for %s:\n%s" % (job_name, e.message))
@@ -87,7 +85,7 @@ class StorageHelper(object):
             return sum(bytes)/(1024**3.0)
 
         except BaseException, e:
-            logging.error("Unable to check path existence: %s" % path)
+            logging.error("Unable to get file size: %s" % path)
             if e.message != "":
                 logging.error("Received the following msg:\n%s" % e.message)
             raise
