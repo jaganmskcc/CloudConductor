@@ -16,7 +16,7 @@ class RefSplitter(Splitter):
     def define_output(self):
         # Obtain arguments
         chr_list        = self.get_argument("chrom_list")
-        nr_splits       = self.get_argument("nr_splits")
+        nr_splits       = int(self.get_argument("nr_splits"))
         include_remains = self.get_argument("include_remains")
 
         # First nr_splits-1 chromosomes get put into own split
