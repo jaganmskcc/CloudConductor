@@ -57,8 +57,12 @@ class StorageHelper(object):
         # Wait for cmd to finish and get output
         try:
             out, err = self.proc.wait_process(job_name)
+            if len(err) != 0:
+                logging.debug("StorageHelper error for %s:\n%s" % (job_name, err))
             return len(err) == 0
-        except RuntimeError:
+        except RuntimeError, e:
+            if e.message != "":
+                logging.debug("StorageHelper error for %s:\n%s" % (job_name, e.message))
             return False
         except:
             logging.error("Unable to check path existence: %s" % path)
