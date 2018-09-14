@@ -213,36 +213,32 @@ class PreemptibleInstance(Instance):
         # Wait until startup-script has completed on instance
         # This signifies that the instance has initialized ssh and the instance environment is finalized
         cycle_count = 1
-        # Waiting for 20 minutes for status to change from creating
-        while cycle_count < 60 and not self.startup_script_complete and not self.is_locked():
-            time.sleep(20)
+        # Waiting for 10 minutes for instance metadata to be set to READY
+        while cycle_count < 10 and not self.startup_script_complete and not self.is_locked():
+            time.sleep(60)
             cycle_count += 1
             self.startup_script_complete = self.poll_startup_script()
 
-        # Get current status from Google
-        curr_status = self.get_status()
-
+        # Throw error if instance locking caused loop to exit
         if self.is_locked():
             logging.debug("(%s) Instance locked while waiting for creation!" % self.name)
             raise RuntimeError("(%s) Instance locked while waiting for creation!" % self.name)
 
-        # Run any commands necessary to make instance ready to run if startup script finished
-        elif curr_status == Processor.AVAILABLE:
-            logging.debug("(%s) Waiting for additional startup commands to run..." % self.name)
-            self.configure_instance()
+        # Reset if instance not initialized within the alloted timeframe
+        elif not self.startup_script_complete:
 
-        # Handle what happends if processor is being/has been destroyed
-        elif curr_status in [Processor.DESTROYING, Processor.OFF]:
-            if "destroy" in self.processes:
-                logging.debug("(%s) Instance destroyed while waiting for creation!" % self.name)
-                raise RuntimeError("(%s) Instance destroyed while waiting for creation!" % self.name)
-
-            # Instance was preempted so reset it
-            else:
-                logging.warning("(%s) Instance preempted! Resetting..." % self.name)
+            # Try creating again if there are still resets
+            if self.creation_resets < self.default_num_cmd_retries:
+                logging.debug("(%s) Create took more than 10 minutes! Resetting instance!" % self.name)
+                self.creation_resets += 1
                 self.reset()
 
-        # Reset if instance not initialized within the alloted timeframe
-        else:
-            logging.debug("(%s) Create took more than 20 minutes! Resetting instance!" % self.name)
-            self.reset()
+            # Throw error if instance still isn't ready after multiple tries
+            else:
+                logging.debug("(%s) Instance successfully created but "
+                              "never became available after %s resets!" %
+                              (self.name, self.default_num_cmd_retries))
+
+                raise RuntimeError("(%s) Instance successfully created but never"
+                                   " became available after %s resets!" %
+                                   self.name, self.default_num_cmd_retries)

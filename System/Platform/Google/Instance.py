@@ -41,6 +41,9 @@ class Instance(Processor):
         # Flag for whether startup script has completed running
         self.startup_script_complete = False
 
+        # Number of times creation has been reset
+        self.creation_resets = 0
+
     def get_status(self):
         with self.status_lock:
             self.status = self.__sync_status()
@@ -94,6 +97,9 @@ class Instance(Processor):
         logging.debug("(%s) Waiting for instance startup-script completion..." % self.name)
         self.startup_script_complete = False
         self.wait_until_ready()
+
+        # Increase number of SSH connections
+        self.__configure_SSH()
         logging.debug("(%s) Instance startup complete! %s Now live and ready to run commands!" % (self.name, self.name))
 
     def destroy(self, wait=True):
@@ -206,42 +212,36 @@ class Instance(Processor):
         # Wait until startup-script has completed on instance
         # This signifies that the instance has initialized ssh and the instance environment is finalized
         cycle_count = 1
-        # Waiting for 20 minutes for status to change from creating
-        while cycle_count < 60 and not self.startup_script_complete and not self.is_locked():
-            time.sleep(20)
+        # Waiting for 10 minutes for instance metadata to be set to READY
+        while cycle_count < 10 and not self.startup_script_complete and not self.is_locked():
+            time.sleep(60)
             cycle_count += 1
             self.startup_script_complete = self.poll_startup_script()
 
-        # Get current status from Google
-        curr_status = self.get_status()
-
+        # Throw error if instance locking caused loop to exit
         if self.is_locked():
             logging.debug("(%s) Instance locked while waiting for creation!" % self.name)
             raise RuntimeError("(%s) Instance locked while waiting for creation!" % self.name)
 
-        # Run any commands necessary to make instance ready to run if startup script finished
-        elif curr_status == Processor.AVAILABLE:
-            logging.debug("(%s) Waiting for additional startup commands to run..." % self.name)
-            self.configure_instance()
-
-        # Handle what happens if processor is being/has been destroyed
-        elif curr_status in [Processor.DESTROYING, Processor.OFF]:
-            logging.debug("(%s) Instance destroyed while waiting for creation!" % self.name)
-            raise RuntimeError("(%s) Instance destroyed while waiting for creation!" % self.name)
-
         # Reset if instance not initialized within the alloted timeframe
-        else:
-            logging.debug("(%s) Create took more than 20 minutes! Resetting instance!" % self.name)
-            self.destroy()
-            self.create()
+        elif not self.startup_script_complete:
 
-    def configure_instance(self):
-        # Function can be easily extended to add different functionality to inheriting classes
-        # Increase number of ssh connections
-        self.__configure_SSH()
+            # Try creating again if there are still resets
+            if self.creation_resets < self.default_num_cmd_retries:
+                logging.debug("(%s) Create took more than 10 minutes! Resetting instance!" % self.name)
+                self.creation_resets += 1
+                self.destroy()
+                self.create()
 
-        # Configure CRCMOD for fast file transfer
-        self.__configure_CRCMOD()
+            # Throw error if instance still isn't ready after multiple tries
+            else:
+                logging.debug("(%s) Instance successfully created but "
+                              "never became available after %s resets!" %
+                              (self.name, self.default_num_cmd_retries))
+
+                raise RuntimeError("(%s) Instance successfully created but never"
+                                   " became available after multiple tries!" %
+                                   self.name)
 
     def raise_error(self, proc_name, proc_obj):
         # Log failure to debug logger if quiet failure
@@ -302,51 +302,26 @@ class Instance(Processor):
 
     def poll_startup_script(self):
         # Return true if instance is currently available for running commands
-        data = GoogleCloudHelper.describe(self.name, self.zone)
+        try:
+            data = GoogleCloudHelper.describe(self.name, self.zone)
+
+        # Catch error related to instance not existing
+        except RuntimeError:
+            logging.error("(%s) Cannot poll startup script! Instance either was removed or was never created!" % self.name)
+            logging.error("(%s) Current instance status: %s" % (self.name, self.get_status()))
+            raise
+
         # Check to see if "READY" has been added to instance metadata indicating startup-script has complete
         for item in data["metadata"]["items"]:
             if item["key"] == "READY":
                 return True
         return False
 
-    def __configure_CRCMOD(self, log=False):
-        # Install necessary packages
-        self.__install_packages(["gcc", "python-dev", "python-setuptools"], log=log)
-
-        # Install CRCMOD python package
-        logging.info("(%s) Configuring CRCMOD for fast data tranfer using gsutil." % self.name)
-        if log:
-            cmd = "python -c 'import crcmod' || (sudo easy_install -U pip !LOG3! && sudo pip uninstall -y crcmod !LOG3! && sudo pip install -U crcmod !LOG3!)"
-        else:
-            cmd = "python -c 'import crcmod' || (sudo easy_install -U pip && sudo pip uninstall -y crcmod && sudo pip install -U crcmod)"
-        self.run("configCRCMOD", cmd)
-        self.wait_process("configCRCMOD")
-
-    def __install_packages(self, packages, log=False):
-        # If no packages are provided to install
-        if not packages:
-            return
-
-        if not isinstance(packages, list):
-            packages = [packages]
-
-        # Log installation
-        logging.info("(%s) Installing the following packages: %s" % (self.name, " ".join(packages)))
-
-        # Get command to install packages
-        if log:
-            cmd         = "yes | sudo aptdcon --hide-terminal -i \"%s\" !LOG3! " % " ".join(packages)
-        else:
-            cmd         = "yes | sudo aptdcon --hide-terminal -i \"%s\" " % " ".join(packages)
-        # Create random id for job
-        job_name = "install_packages"
-        self.run(job_name, cmd)
-        self.wait_process(job_name)
-
     def __configure_SSH(self, max_connections=500, log=False):
 
         # Increase the number of concurrent SSH connections
-        logging.info("(%s) Increasing the number of maximum concurrent SSH connections to %s." % (self.name, max_connections))
+        logging.info(
+            "(%s) Increasing the number of maximum concurrent SSH connections to %s." % (self.name, max_connections))
         if log:
             cmd = "sudo bash -c 'echo \"MaxStartups %s\" >> /etc/ssh/sshd_config' !LOG2! " % max_connections
         else:
