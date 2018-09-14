@@ -1,6 +1,7 @@
 import logging
 import subprocess as sp
 import time
+import random
 
 from System.Platform import Process
 from System.Platform import Processor
@@ -140,6 +141,14 @@ class PreemptibleInstance(Instance):
             time.sleep(60)
 
         # Raise error if processor is locked
+        if self.is_locked() and proc_name != "destroy":
+            self.raise_error(proc_name, proc_obj)
+
+        # Check to see if issue was caused by rate limit. If so, cool out for a random time limit
+        if "Rate Limit Exceeded" in proc_obj.err:
+            self.throttle_api_rate(proc_name, proc_obj)
+
+        # Check again to make sure processor wasn't locked during sleep time
         if self.is_locked() and proc_name != "destroy":
             self.raise_error(proc_name, proc_obj)
 

@@ -2,6 +2,7 @@ import logging
 import subprocess as sp
 import time
 import math
+import random
 
 from System.Platform import Process
 from System.Platform import Processor
@@ -168,6 +169,14 @@ class Instance(Processor):
         if self.is_locked() and proc_name != "destroy":
             self.raise_error(proc_name, proc_obj)
 
+        # Check to see if issue was caused by rate limit. If so, cool out for a random time limit
+        if "Rate Limit Exceeded" in proc_obj.err:
+            self.throttle_api_rate(proc_name, proc_obj)
+
+        # Check again to make sure processor wasn't locked during sleep time
+        if self.is_locked() and proc_name != "destroy":
+            self.raise_error(proc_name, proc_obj)
+
         curr_status = self.get_status()
 
         if curr_status == Processor.OFF:
@@ -261,6 +270,20 @@ class Instance(Processor):
             if stdout_msg != "" or stderr_msg != "":
                 logging.debug("(%s) The following error was received:\n%s\n%s" % (self.name, stdout_msg, stderr_msg))
         raise RuntimeError("Instance %s has failed!" % self.name)
+
+    def throttle_api_rate(self, proc_name, proc_obj):
+        # If process fails due to rate limit error, sleep for a random period of time before trying again
+        # Choose random sleep timeout between 1 and 3 minutes
+        sleep_time = random.randint(30, 180)
+        count = 0
+        logging.warning("(%s) Process '%s' failed due to rate limit issue. "
+                        "Resting for %s seconds before handling error..." %
+                        (self.name, proc_name, sleep_time))
+
+        # Wait until sleep timer is up or processor becomes locked externally
+        while not self.is_locked() and count < sleep_time:
+            time.sleep(1)
+            count += 1
 
     def __sync_status(self):
         # Try to return current instance status

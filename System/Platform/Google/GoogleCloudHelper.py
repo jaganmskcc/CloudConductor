@@ -21,7 +21,7 @@ class GoogleCloudHelper:
     active_zones = None
 
     @staticmethod
-    def run_cmd(cmd, err_msg=None, num_retries=3):
+    def run_cmd(cmd, err_msg=None, num_retries=5):
 
         # Running and waiting for the command
         proc = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
@@ -31,8 +31,13 @@ class GoogleCloudHelper:
         if len(err) != 0 and "error" in err.lower():
             # Retry command if possible
             if num_retries > 0:
-                # Wait five seconds to make sure its not a rate limiting error
-                time.sleep(5)
+                # Sleep for a brief period before retrying if error due to api rate limit
+                if "Rate Limit" in err:
+                    sleep_time = random.randint(10,120)
+                    logging.warning("GoogleCloudHelper failed due to rate limit issue. "
+                                    "Sleeping for %s seconds before re-trying...\n"
+                                    "Failed cmd:\t%s" % (sleep_time, cmd))
+                    time.sleep(random.randint(10, 180))
                 return GoogleCloudHelper.run_cmd(cmd, err_msg, num_retries=num_retries-1)
             logging.error("GoogleCloudHelper could not run the following command:\n%s" % cmd)
             if err_msg is not None:
@@ -406,7 +411,12 @@ class GoogleCloudHelper:
     def describe(ins_name, zone):
         cmd = 'gcloud compute instances describe %s --format json --zone %s' % (ins_name, zone)
         out = GoogleCloudHelper.run_cmd(cmd, err_msg="Unable to describe instance '%s'!" % ins_name)
-        return json.loads(out)
+        try:
+            return json.loads(out)
+        except ValueError:
+            logging.error("GoogleCloudHelper describe returned non-json output for instance '%s'!"
+                          "Output received:\n%s" % (ins_name, out))
+            raise
 
     @staticmethod
     def instance_exists(ins_name):
