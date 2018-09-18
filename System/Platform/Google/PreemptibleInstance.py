@@ -1,7 +1,6 @@
 import logging
 import subprocess as sp
 import time
-import random
 
 from System.Platform import Process
 from System.Platform import Processor
@@ -156,6 +155,12 @@ class PreemptibleInstance(Instance):
 
         # Re-run any command (except create) if instance is up and cmd can be retried
         if curr_status == Processor.AVAILABLE:
+            if proc_name == "create" and "already exists" not in proc_obj.err:
+                # Sometimes create works but returns a failure
+                # Just need to make sure the failure wasn't due to instance already existing
+                return
+
+            # Retry command if retries are left and command isn't 'create'
             can_retry = proc_obj.get_num_retries() > 0 and proc_name != "create"
 
         # Re-run destroy command if instance is creating and cmd has enough retries
