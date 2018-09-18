@@ -273,8 +273,8 @@ class Instance(Processor):
 
     def throttle_api_rate(self, proc_name, proc_obj):
         # If process fails due to rate limit error, sleep for a random period of time before trying again
-        # Choose random sleep timeout between 1 and 8 minutes
-        sleep_time = random.randint(30, 480)
+        # Choose random sleep timeout between 5 and 10 minutes
+        sleep_time = random.randint(300, 600)
         count = 0
         logging.warning("(%s) Process '%s' failed due to rate limit issue. "
                         "Resting for %s seconds before handling error..." %
