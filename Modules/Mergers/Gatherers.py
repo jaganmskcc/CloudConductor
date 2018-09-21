@@ -19,7 +19,7 @@ class _BaseGatherer(Merger):
         # Output is literally just the same exact inputs
         args = self.get_arguments()
         for input_type in self.TYPES_TO_GATHER:
-            self.add_output(input_type, args[input_type].get_value())
+            self.add_output(input_type, args[input_type].get_value(), is_path=False)
 
     def define_command(self):
         return None
