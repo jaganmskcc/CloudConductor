@@ -34,7 +34,7 @@ class ModuleExecutor(object):
         src_seen = []
         dest_seen = []
         count = 1
-        batch_size = 100
+        batch_size = 50
         loading_counter = 0
         for task_input in inputs:
 
@@ -85,6 +85,8 @@ class ModuleExecutor(object):
                 
                 # If loading_counter is batch_size, clear out queue
                 if loading_counter >= batch_size:
+                    logging.debug("Batch size reached on task {0}".format(
+                        self.task_id))
                     # Wait for all processes to finish
                     while len(job_names):
                         self.processor.wait_process(job_names.pop())
