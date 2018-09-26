@@ -52,8 +52,8 @@ class TaxonClassify(Module):
 
 
 class BLASTX(Module):
-    def __init__(self, module_id):
-        super(BLASTX, self).__init__(module_id)
+    def __init__(self, module_id, is_docker=False):
+        super(BLASTX, self).__init__(module_id, is_docker)
         self.output_keys = ["diamond_blast_output"]
 
     def define_input(self):
