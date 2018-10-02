@@ -1,4 +1,5 @@
 from Modules import Merger, PseudoMerger
+from System.Platform import Platform
 
 class _GATKBase(Merger):
 
@@ -265,11 +266,12 @@ class CombineGVCF(_GATKBase):
         self.add_argument("mem",                is_required=True, default_value=16)
 
     def define_output(self):
-        # Declare merged GVCF output filename
-        gvcf = self.generate_unique_file_name(extension=".g.vcf")
+        # Declare GVCF output filename
+        randomer = Platform.generate_unique_id()
+        gvcf = self.generate_unique_file_name(extension="{0}.g.vcf".format(randomer))
         self.add_output("gvcf", gvcf)
         # Declare GVCF index output filename
-        gvcf_idx = self.generate_unique_file_name(extension=".g.vcf.idx")
+        gvcf_idx = self.generate_unique_file_name(extension="{0}.g.vcf.idx".format(randomer))
         self.add_output("gvcf_idx", gvcf_idx)
 
     def define_command(self):
