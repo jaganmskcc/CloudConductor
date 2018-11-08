@@ -72,7 +72,7 @@ class GenotypeGVCFs(_GATKBase):
                 opts.append("--variant %s" % gvcf)
         else:
             opts.append("--variant %s" % gvcf_in)
-        opts.append("-o %s" % vcf)
+        opts.append("-O %s" % vcf)
         opts.append("-R %s" % ref)
 
         # Limit the locations to be processes
