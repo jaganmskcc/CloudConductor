@@ -7,9 +7,18 @@ class _GATKBase(Merger):
         super(_GATKBase, self).__init__(module_id, is_docker)
 
     def define_base_args(self):
+
+        # Set GATK executable arguments
         self.add_argument("java",           is_required=True, is_resource=True)
         self.add_argument("gatk",           is_required=True, is_resource=True)
         self.add_argument("gatk_version",   is_required=True)
+
+        # Set reference specific arguments
+        self.add_argument("ref",            is_required=True, is_resource=True)
+        self.add_argument("ref_idx",        is_required=True, is_resource=True)
+        self.add_argument("ref_dict",       is_required=True, is_resource=True)
+
+        # Set chromosome interval specific arguments
         self.add_argument("location")
         self.add_argument("excluded_location")
 
@@ -43,7 +52,6 @@ class GenotypeGVCFs(_GATKBase):
         self.define_base_args()
         self.add_argument("gvcf",                is_required=True)
         self.add_argument("gvcf_idx",            is_required=True)
-        self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=6)
         self.add_argument("mem",                is_required=True, default_value=35)
 
@@ -105,7 +113,6 @@ class Mutect2(_GATKBase):
         self.add_argument("bam_idx",            is_required=True)
         self.add_argument("sample_name",        is_required=True)
         self.add_argument("is_tumor",           is_required=True)
-        self.add_argument("ref",                is_required=True,   is_resource=True)
         self.add_argument("germline_vcf",       is_required=False,  is_resource=True)
         self.add_argument("nr_cpus",            is_required=True,   default_value=8)
         self.add_argument("mem",                is_required=True,   default_value=30)
@@ -205,14 +212,11 @@ class CatVariants(_GATKBase):
         self.output_keys  = ["gvcf", "gvcf_idx"]
 
     def define_input(self):
+        self.define_base_args()
         self.add_argument("gvcf",       is_required=True)
         self.add_argument("gvcf_idx",   is_required=True)
-        self.add_argument("gatk",       is_required=True, is_resource=True)
-        self.add_argument("ref",        is_required=True, is_resource=True)
-        self.add_argument("ref_dict",   is_required=True, is_resource=True)
         self.add_argument("nr_cpus",    is_required=True, default_value=2)
         self.add_argument("mem",        is_required=True, default_value=13)
-        self.add_argument("java",       is_required=True, is_resource=True)
 
     def define_output(self):
         # Declare GVCF output filename
@@ -262,7 +266,6 @@ class CombineGVCF(_GATKBase):
         self.define_base_args()
         self.add_argument("gvcf",               is_required=True)
         self.add_argument("gvcf_idx",           is_required=True)
-        self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=8)
         self.add_argument("mem",                is_required=True, default_value=16)
 
