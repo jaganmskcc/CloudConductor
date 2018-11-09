@@ -78,11 +78,13 @@ class SnpSiftAnnotate(Module):
         if not self.is_docker:
             java = self.get_argument("java")
             jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
-            # Generating SnpEff command
-            cmd = "{0} {1} -jar {2} {3} {4} > {5} !LOG2!".format(java, jvm_options, snpsift, dbsnp, vcf_in, vcf_out)
+
         else:
-            cmd = "{0} {1} {2} > {3}".format(snpsift, dbsnp, vcf_in, vcf_out)
-        return cmd
+            java = "java"
+            jvm_options = "-Xmx%dG" % (mem * 4 / 5)
+
+        # Generating SnpEff command
+        return "{0} {1} -jar {2} {3} {4} > {5} !LOG2!".format(java, jvm_options, snpsift, dbsnp, vcf_in, vcf_out)
 
 class SnpSiftFilter(Module):
 
@@ -120,8 +122,10 @@ class SnpSiftFilter(Module):
         if not self.is_docker:
             java = self.get_argument("java")
             jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
-            # Generating SnpEff command
-            cmd = "{0} {1} -jar {2} {3} {4} > {5} !LOG2!".format(java, jvm_options, snpsift, filter_exp, vcf_in, vcf_out)
+
         else:
-            cmd = "{0} {1} {2} > {3}".format(snpsift, filter_exp, vcf_in, vcf_out)
-        return cmd
+            java = "java"
+            jvm_options = "-Xmx%dG" % (mem * 4 / 5)
+
+        # Generating SnpEff command
+        return "{0} {1} -jar {2} {3} {4} > {5} !LOG2!".format(java, jvm_options, snpsift, filter_exp, vcf_in, vcf_out)
