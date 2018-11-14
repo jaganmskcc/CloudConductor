@@ -9,9 +9,18 @@ class _GATKBase(Module):
         super(_GATKBase, self).__init__(module_id, is_docker)
 
     def define_base_args(self):
+
+        # Set GATK executable arguments
         self.add_argument("java",           is_required=True, is_resource=True)
         self.add_argument("gatk",           is_required=True, is_resource=True)
         self.add_argument("gatk_version",   is_required=True)
+
+        # Set reference specific arguments
+        self.add_argument("ref",            is_required=True, is_resource=True)
+        self.add_argument("ref_idx",        is_required=True, is_resource=True)
+        self.add_argument("ref_dict",       is_required=True, is_resource=True)
+
+        # Set chromosome interval specific arguments
         self.add_argument("location")
         self.add_argument("excluded_location")
 
@@ -48,8 +57,6 @@ class HaplotypeCaller(_GATKBase):
         self.add_argument("bam_idx",            is_required=True)
         self.add_argument("BQSR_report",        is_required=False)
         self.add_argument("use_bqsr",           is_required=True, default_value=True)
-        self.add_argument("ref",                is_required=True, is_resource=True)
-        self.add_argument("ref_dict",           is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=8)
         self.add_argument("mem",                is_required=True, default_value=48)
 
@@ -112,8 +119,6 @@ class PrintReads(_GATKBase):
         self.add_argument("bam",                is_required=True)
         self.add_argument("bam_idx",            is_required=True)
         self.add_argument("BQSR_report",        is_required=True)
-        self.add_argument("ref",                is_required=True, is_resource=True)
-        self.add_argument("ref_dict",           is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=2)
         self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2.5")
 
@@ -169,8 +174,6 @@ class ApplyBQSR(_GATKBase):
         self.add_argument("bam",                is_required=True)
         self.add_argument("bam_idx",            is_required=True)
         self.add_argument("BQSR_report",        is_required=True)
-        self.add_argument("ref",                is_required=True, is_resource=True)
-        self.add_argument("ref_dict",           is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=2)
         self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2.5")
 
@@ -230,9 +233,7 @@ class BaseRecalibrator(_GATKBase):
         self.add_argument("bam",                is_required=True)
         self.add_argument("bam_idx",            is_required=True)
         self.add_argument("chrom_size_list",    is_required=False)
-        self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("dbsnp",              is_required=True, is_resource=True)
-        self.add_argument("ref_dict",           is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=4)
         self.add_argument("mem",                is_required=True, default_value=12)
         self.add_argument("max_nr_reads",       is_required=True, default_value=2.5*10**7)
@@ -328,7 +329,6 @@ class IndexVCF(_GATKBase):
     def define_input(self):
         self.define_base_args()
         self.add_argument("vcf",               is_required=True)
-        self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=2)
         self.add_argument("mem",                is_required=True, default_value=13)
 
@@ -455,8 +455,6 @@ class GenotypeGenomicsDB(_GATKBase):
     def define_input(self):
         self.define_base_args()
         self.add_argument("genomicsDB", is_required=True)
-        self.add_argument("ref",        is_required=True, is_resource=True)
-        self.add_argument("ref_dict",   is_required=True, is_resource=True)
         self.add_argument("nr_cpus",    is_required=True, default_value=4)
         self.add_argument("mem",        is_required=True, default_value=16)
 

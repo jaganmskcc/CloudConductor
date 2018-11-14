@@ -5,7 +5,7 @@ class _BaseGatherer(Merger):
     # Basically it means they can stop splitting and take multiple inputs and pass those inputs to subsequent modules
     TYPES_TO_GATHER = []
     def __init__(self, module_id, is_docker=False):
-        super(_BaseGatherer).__init__(module_id, is_docker)
+        super(_BaseGatherer, self).__init__(module_id, is_docker)
         self.output_keys = self.TYPES_TO_GATHER
 
     def define_input(self):
@@ -19,7 +19,7 @@ class _BaseGatherer(Merger):
         # Output is literally just the same exact inputs
         args = self.get_arguments()
         for input_type in self.TYPES_TO_GATHER:
-            self.add_output(input_type, args[input_type].get_value())
+            self.add_output(input_type, args[input_type].get_value(), is_path=False)
 
     def define_command(self):
         return None

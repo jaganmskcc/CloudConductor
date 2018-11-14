@@ -104,16 +104,17 @@ class GooglePlatform(Platform):
             report_file.write(str(report))
             report_filepath = report_file.name
 
+        # Generate destination file path
+        dest_path = os.path.join(self.final_output_dir, "%s_final_report.json" % self.name)
+
         # Transfer report file to bucket
-        if report_filepath is not None:
-            options_fast = '-m -o "GSUtil:sliced_object_download_max_components=200"'
-            dest_path = os.path.join(self.final_output_dir, "%s_final_report.json" % self.name)
-            cmd = "gsutil %s cp -r %s %s 1>/dev/null 2>&1 " % (options_fast, report_filepath, dest_path)
-            GoogleCloudHelper.run_cmd(cmd, err_msg="Could not transfer final report to the final output directory!")
+        options_fast = '-m -o "GSUtil:sliced_object_download_max_components=200"'
+        cmd = "gsutil %s cp -r %s %s 1>/dev/null 2>&1 " % (options_fast, report_filepath, dest_path)
+        GoogleCloudHelper.run_cmd(cmd, err_msg="Could not transfer final report to the final output directory!")
 
         # Send report to the Pub/Sub report topic if it's known to exist
         if self.report_topic_validated:
-            GoogleCloudHelper.send_pubsub_message(self.report_topic, message=str(report), encode=True, compress=True)
+            GoogleCloudHelper.send_pubsub_message(self.report_topic, message=dest_path, encode=True, compress=True)
 
     def clean_up(self):
 

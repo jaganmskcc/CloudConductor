@@ -220,8 +220,9 @@ class Instance(Processor):
                      docker_image=proc_obj.get_docker_image(),
                      quiet_failure=proc_obj.is_quiet())
 
-        # Raise error if no restarts left
-        self.raise_error(proc_name, proc_obj)
+        # Raise error if cmd failed and no retries left
+        else:
+            self.raise_error(proc_name, proc_obj)
 
     def wait_until_ready(self):
         # Wait until startup-script has completed on instance

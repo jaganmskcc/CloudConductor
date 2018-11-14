@@ -26,18 +26,18 @@ class VCFMerger(Merger):
         vcf_list    = self.get_argument("vcf")
         snpsift     = self.get_argument("snpsift")
         vcf_out     = self.get_output("vcf")
+        mem         = self.get_argument("mem")
 
         # Generating JVM options
         if not self.is_docker:
             java = self.get_argument("java")
-            mem = self.get_argument("mem")
             jvm_options = "-Xmx%dG -Djava.io.tmpdir=/tmp/" % (mem * 9 / 10)
-            snpsift_cmd = "{0} {1} -jar {2}".format(java, jvm_options, snpsift)
         else:
-            snpsift_cmd = str(snpsift)
+            java = "java"
+            jvm_options = "-Xmx%dG" % (mem * 9 / 10)
 
-        # Generating SnpEff command
-        return "{0} sort {1} > {2} !LOG2!".format(snpsift_cmd, " ".join(vcf_list), vcf_out)
+        # Generating SnpSift command
+        return "{0} {1} -jar {2} sort {3} > {4} !LOG2!".format(java, jvm_options, snpsift, " ".join(vcf_list), vcf_out)
 
 
 class BGZipVCFMerger(Merger):
