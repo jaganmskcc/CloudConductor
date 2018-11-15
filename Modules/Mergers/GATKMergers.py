@@ -42,6 +42,25 @@ class _GATKBase(Merger):
         else:
             return "{0} {1} -jar {2}".format(java, jvm_options, gatk)
 
+    @staticmethod
+    def get_output_file_flag():
+        """
+        Function returns an appropriate output file flag for GATK tools based on GATK version
+        Returns: Output file flag in Str format
+
+        """
+
+        # Determine numeric version of GATK
+        gatk_version = self.get_argument("gatk_version")
+        gatk_version = str(gatk_version).lower().replace("gatk", "")
+        gatk_version = gatk_version.strip()
+        gatk_version = int(gatk_version.split(".")[0])
+
+        if gatk_version < 4:
+            return "-o"
+
+        return "-O"
+
 class GenotypeGVCFs(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
@@ -72,6 +91,8 @@ class GenotypeGVCFs(_GATKBase):
         vcf         = self.get_output("vcf")
         gatk_cmd    = self.get_gatk_command()
 
+        output_file_flag = self.get_output_file_flag()
+
         # Generating the haplotype caller options
         opts = list()
 
@@ -80,7 +101,7 @@ class GenotypeGVCFs(_GATKBase):
                 opts.append("--variant %s" % gvcf)
         else:
             opts.append("--variant %s" % gvcf_in)
-        opts.append("-O %s" % vcf)
+        opts.append("{0} {1}".format(output_file_flag, vcf))
         opts.append("-R %s" % ref)
 
         # Limit the locations to be processes
@@ -139,6 +160,8 @@ class Mutect2(_GATKBase):
 
         gatk_cmd        = self.get_gatk_command()
 
+        output_file_flag = self.get_output_file_flag()
+
         # Generating the MuTect2 options
         opts = list()
 
@@ -155,7 +178,7 @@ class Mutect2(_GATKBase):
         normal_bams = ["-I %s" % bam for bam in bams[1] ] if isinstance(bams[1], list) else ["-I %s" % bams[1]]
         opts += tumor_bams + normal_bams
 
-        opts.append("-O %s" % vcf)
+        opts.append("{0} {1}".format(output_file_flag, vcf))
         opts.append("-R %s" % ref)
         opts.append("--native-pair-hmm-threads %s" % nr_cpus)
 
@@ -202,7 +225,11 @@ class MergeBQSRs(_GATKBase):
         bqsrs_in    = self.get_argument("BQSR_report")
         bqsr_out    = self.get_output("BQSR_report")
         gatk_cmd    = self.get_gatk_command()
-        return "{0} GatherBQSRReports --input {1} -O {2} !LOG3!".format(gatk_cmd, " --input ".join(bqsrs_in), bqsr_out)
+
+        output_file_flag = self.get_output_file_flag()
+
+        return "{0} GatherBQSRReports --input {1} {3} {2} !LOG3!".format(gatk_cmd, " --input ".join(bqsrs_in),
+                                                                         bqsr_out, output_file_flag)
 
 class CatVariants(_GATKBase):
     # Merger module intended to merge gVCF files within samples (i.e. re-combine chromosomes)
@@ -239,9 +266,11 @@ class CatVariants(_GATKBase):
         # Generating JVM options
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=/tmp/" % (mem * 9 / 10)
 
+        output_file_flag = self.get_output_file_flag()
+
         # Generating the CatVariants options
         opts = list()
-        opts.append("-out %s" % gvcf_out)
+        opts.append("{0} {1}".format(output_file_flag, gvcf_out))
         opts.append("-R %s" % ref)
         if isinstance(gvcf_in, list):
             for gvcf_input in gvcf_in:
@@ -289,9 +318,11 @@ class CombineGVCF(_GATKBase):
 
         gatk_cmd    = self.get_gatk_command()
 
+        output_file_flag = self.get_output_file_flag()
+
         # Generating the combine options
         opts = list()
-        opts.append("-o %s" % gvcf_out)
+        opts.append("{0} {1}".format(output_file_flag, gvcf_out))
         opts.append("-R %s" % ref)
         opts.append("-U ALLOW_SEQ_DICT_INCOMPATIBILITY") # Option that allows dictionary incompatibility
         for gvcf_input in gvcf_list:

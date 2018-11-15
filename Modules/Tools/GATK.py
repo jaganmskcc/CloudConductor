@@ -44,6 +44,24 @@ class _GATKBase(Module):
         else:
             return "{0} {1} -jar {2}".format(java, jvm_options, gatk)
 
+    @staticmethod
+    def get_output_file_flag():
+        """
+        Function returns an appropriate output file flag for GATK tools based on GATK version
+        Returns: Output file flag in Str format
+
+        """
+
+        # Determine numeric version of GATK
+        gatk_version = self.get_argument("gatk_version")
+        gatk_version = str(gatk_version).lower().replace("gatk", "")
+        gatk_version = gatk_version.strip()
+        gatk_version = int(gatk_version.split(".")[0])
+
+        if gatk_version < 4:
+            return "-o"
+
+        return "-O"
 
 class HaplotypeCaller(_GATKBase):
 
@@ -81,10 +99,12 @@ class HaplotypeCaller(_GATKBase):
         gatk_version = self.get_argument("gatk_version")
         use_bqsr     = self.get_argument("use_bqsr")
 
+        output_file_flag = self.get_output_file_flag()
+
         # Generating the haplotype caller options
         opts = list()
         opts.append("-I %s" % bam)
-        opts.append("-o %s" % gvcf)
+        opts.append("{0} {1}".format(output_file_flag, gvcf))
         opts.append("-R %s" % ref)
         opts.append("-ERC GVCF")
         if BQSR is not None and gatk_version < 4 and use_bqsr:
@@ -138,10 +158,12 @@ class PrintReads(_GATKBase):
         output_bam = self.get_output("bam")
         gatk_cmd = self.get_gatk_command()
 
+        output_file_flag = self.get_output_file_flag()
+
         # Generating the PrintReads caller options
         opts = list()
         opts.append("-I %s" % bam)
-        opts.append("-o %s" % output_bam)
+        opts.append("{0} {1}".format(output_file_flag, output_bam))
         opts.append("-nct %d" % nr_cpus)
         opts.append("-R %s" % ref)
         opts.append("-BQSR %s" % BQSR)
@@ -196,10 +218,12 @@ class ApplyBQSR(_GATKBase):
         tmp_bam_idx     = str(output_bam_idx).replace(".bam.bai", ".bai")
         gatk_cmd        = self.get_gatk_command()
 
+        output_file_flag = self.get_output_file_flag()
+
         # Generating the ApplyBQSR caller options
         opts = list()
         opts.append("-I %s" % bam)
-        opts.append("-O %s" % output_bam)
+        opts.append("{0} {1}".format(output_file_flag, output_bam))
         opts.append("-R %s" % ref)
         opts.append("--bqsr-recal-file %s" % BQSR)
 
@@ -260,10 +284,12 @@ class BaseRecalibrator(_GATKBase):
         # Convert max_nr_reads to integer if necessary
         max_nr_reads    = eval(max_nr_reads) if isinstance(max_nr_reads, basestring) else max_nr_reads
 
+        output_file_flag = self.get_output_file_flag()
+
         # Generating the base recalibration options
         opts = list()
         opts.append("-I %s" % bam)
-        opts.append("-o %s" % bqsr_report)
+        opts.append("{0} {1}".format(output_file_flag, bqsr_report))
         opts.append("-nct %d" % nr_cpus)
         opts.append("-R %s" % ref)
         opts.append("-knownSites %s" % dbsnp)
@@ -353,9 +379,11 @@ class IndexVCF(_GATKBase):
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
         cmd = "%s %s -cp %s org.broadinstitute.gatk.tools.CatVariants" % (java, jvm_options, gatk)
 
+        output_file_flag = self.get_output_file_flag()
+
         # Generating the CatVariants options
         opts = list()
-        opts.append("-out %s" % vcf_out)
+        opts.append("{0} {1}".format(output_file_flag, vcf_out))
         opts.append("-R %s" % ref)
         opts.append("-V %s" % vcf_in)
 
@@ -384,7 +412,10 @@ class FilterMutectCalls(_GATKBase):
         vcf_in      = self.get_argument("vcf")
         gatk_cmd    = self.get_gatk_command()
         vcf_out     = self.get_output("vcf")
-        return "{0} FilterMutectCalls -V {1} -O {2} !LOG3!".format(gatk_cmd, vcf_in, vcf_out)
+
+        output_file_flag = self.get_output_file_flag()
+
+        return "{0} FilterMutectCalls -V {1} {3} {2} !LOG3!".format(gatk_cmd, vcf_in, vcf_out, output_file_flag)
 
 class CollectReadCounts(_GATKBase):
 
@@ -412,7 +443,9 @@ class CollectReadCounts(_GATKBase):
         read_count_out  = self.get_output("read_count_out")
         interval_list   = self.get_argument("interval_list")
 
-        cmd = "{0} CollectReadCounts -I {1} -O {2} --format TSV ".format(gatk_cmd, bam, read_count_out)
+        output_file_flag = self.get_output_file_flag()
+
+        cmd = "{0} CollectReadCounts -I {1} {3} {2} --format TSV ".format(gatk_cmd, bam, read_count_out, output_file_flag)
 
         if interval_list is not None:
             cmd = "{0} -L {1} --interval-merging-rule OVERLAPPING_ONLY".format(cmd, interval_list)
@@ -444,7 +477,10 @@ class BedToIntervalList(_GATKBase):
         gatk_cmd        = self.get_gatk_command()
         interval_list   = self.get_output("interval_list")
 
-        return "{0} BedToIntervalList -I {1} -O {2} -SD {3} !LOG3!".format(gatk_cmd, bed, interval_list, dict_file)
+        output_file_flag = self.get_output_file_flag()
+
+        return "{0} BedToIntervalList -I {1} {4} {2} -SD {3} !LOG3!".format(gatk_cmd, bed, interval_list, dict_file,
+                                                                            output_file_flag)
 
 class GenotypeGenomicsDB(_GATKBase):
 
@@ -476,6 +512,8 @@ class GenotypeGenomicsDB(_GATKBase):
         # Make JVM options and GATK command
         gatk_cmd = self.get_gatk_command()
 
+        output_file_flag = self.get_output_file_flag()
+
         # Generating the haplotype caller options
         opts = list()
 
@@ -485,7 +523,7 @@ class GenotypeGenomicsDB(_GATKBase):
         else:
             opts.append("-V gendb://{0}".format(genomics_db))
 
-        opts.append("-O {0}".format(vcf))
+        opts.append("{1} {0}".format(vcf, output_file_flag))
         opts.append("-R {0}".format(ref))
 
         # Limit the locations to be processes
