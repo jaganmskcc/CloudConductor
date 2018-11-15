@@ -460,7 +460,6 @@ class BedToIntervalList(_GATKBase):
     def define_input(self):
         self.define_base_args()
         self.add_argument("bed",        is_required=True, is_resource=True)
-        self.add_argument("dict_file",  is_required=True, is_resource=True)
         self.add_argument("nr_cpus",    is_required=True, default_value=1)
         self.add_argument("mem",        is_required=True, default_value=2)
 
@@ -473,7 +472,7 @@ class BedToIntervalList(_GATKBase):
 
         # Get input arguments
         bed             = self.get_argument("bed")
-        dict_file       = self.get_argument("dict_file")
+        dict_file       = self.get_argument("ref_dict")
         gatk_cmd        = self.get_gatk_command()
         interval_list   = self.get_output("interval_list")
 
