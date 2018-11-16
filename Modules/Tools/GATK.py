@@ -44,8 +44,7 @@ class _GATKBase(Module):
         else:
             return "{0} {1} -jar {2}".format(java, jvm_options, gatk)
 
-    @staticmethod
-    def get_output_file_flag():
+    def get_output_file_flag(self):
         """
         Function returns an appropriate output file flag for GATK tools based on GATK version
         Returns: Output file flag in Str format

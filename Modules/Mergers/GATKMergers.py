@@ -42,8 +42,7 @@ class _GATKBase(Merger):
         else:
             return "{0} {1} -jar {2}".format(java, jvm_options, gatk)
 
-    @staticmethod
-    def get_output_file_flag():
+    def get_output_file_flag(self):
         """
         Function returns an appropriate output file flag for GATK tools based on GATK version
         Returns: Output file flag in Str format
@@ -266,11 +265,9 @@ class CatVariants(_GATKBase):
         # Generating JVM options
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=/tmp/" % (mem * 9 / 10)
 
-        output_file_flag = self.get_output_file_flag()
-
         # Generating the CatVariants options
         opts = list()
-        opts.append("{0} {1}".format(output_file_flag, gvcf_out))
+        opts.append("-out {0}".format(gvcf_out))
         opts.append("-R %s" % ref)
         if isinstance(gvcf_in, list):
             for gvcf_input in gvcf_in:
