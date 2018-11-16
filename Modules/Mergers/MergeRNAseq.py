@@ -5,6 +5,11 @@ def generate_sample_sheet_cmd(sample_names, sample_files, outfile, in_type=None)
     # list of cmds
     cmds = list()
 
+    # make a list of one sample if theere is only one sample in the analysis
+    if not isinstance(sample_names, list):
+        sample_names = [sample_names]
+        sample_files = [sample_files]
+
     #iterate through all the samples to create a sample info file for Rscript
     for index in range(len(sample_names)):
         if index == 0:
