@@ -28,6 +28,10 @@ class VCFMerger(Merger):
         vcf_out     = self.get_output("vcf")
         mem         = self.get_argument("mem")
 
+        # Ensuring the input vcf list is an actual list, even if a list of one VCF
+        if not isinstance(vcf_list, list):
+            vcf_list = [vcf_list]
+
         # Generating JVM options
         if not self.is_docker:
             java = self.get_argument("java")
@@ -63,6 +67,11 @@ class BGZipVCFMerger(Merger):
         vcf_gz      = self.get_argument("vcf_gz")
         bcftools    = self.get_argument("bcftools")
         vcf_out     = self.get_output("vcf")
+
+        # Ensuring the input vcf list is an actual list, even if a list of one VCF
+        if not isinstance(vcf_gz, list):
+            vcf_gz = [vcf_gz]
+
         # Get final normalized VCF output file path
         cmd = "%s merge -F x %s > %s !LOG2!" % (bcftools, " ".join(vcf_gz), vcf_out)
         return cmd
@@ -90,7 +99,9 @@ class RecodedVCFMerger(Merger):
         recode_vcf_in   = self.get_argument("recoded_vcf")
         recode_vcf_out  = self.get_output("recoded_vcf")
 
-        # Generate cat recoded VCF command
+        # Ensuring the input vcf list is an actual list, even if a list of one VCF
+        if not isinstance(recode_vcf_in, list):
+            recode_vcf_in = [recode_vcf_in]
 
         # Install pyvcf prior to runtime if not running in docker
         if not self.is_docker:
@@ -120,6 +131,10 @@ class VCFSummaryMerger(Merger):
         cat_vcf_summary  = self.get_argument("cat_vcf_summary")
         vcf_summary_in   = self.get_argument("vcf_summary")
         vcf_summary_out  = self.get_output("vcf_summary")
+
+        # Ensuring the input vcf list is an actual list, even if a list of one VCF
+        if not isinstance(vcf_summary_in, list):
+            vcf_summary_in = [vcf_summary_in]
 
         # Generate command to merge VCF summaries
 
