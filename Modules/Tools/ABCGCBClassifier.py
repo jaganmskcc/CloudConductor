@@ -1,3 +1,4 @@
+import os
 from Modules import Module
 
 class ABCGCBClassifier(Module):
@@ -16,7 +17,10 @@ class ABCGCBClassifier(Module):
     def define_output(self):
 
         # Declare unique file name
-        self.add_output("classification_report", "ABC_GCB_gene_expr.pdf")
+        output_file_name = self.generate_unique_file_name(extension=".ABC_GCB_gene_expr.pdf")
+
+        # Declare unique file name
+        self.add_output("classification_report", output_file_name)
 
     def define_command(self):
 
@@ -29,13 +33,13 @@ class ABCGCBClassifier(Module):
         classifier      = self.get_argument("classifier")
 
         #get the output file and make appropriate path for it
-        #output_file     = self.get_output("classification_report")
+        output_file     = self.get_output("classification_report")
 
         if not self.is_docker:
-            cmd = "sudo Rscript --vanilla {0} -e {1} -s {2} -r {3} !LOG3!".format(classifier, expression_file, sample,
-                                                                                  ref)
+            cmd = "sudo Rscript --vanilla {0} -e {1} -s {2} -r {3} -o {4} !LOG3!".format(classifier, expression_file,
+                                                                                         sample, ref, output_file)
         else:
-            cmd = "Rscript --vanilla $(which {0}) -e {1} -s {2} -r {3} !LOG3!".format(classifier, expression_file,
-                                                                                    sample, ref)
+            cmd = "Rscript --vanilla {0} -e {1} -s {2} -r {3} -o {4} !LOG3!".format(classifier, expression_file,
+                                                                                    sample, ref, output_file)
 
         return cmd
