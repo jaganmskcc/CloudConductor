@@ -15,7 +15,7 @@ class Annovar(Module):
         self.add_argument("buildver",           is_required=True)
         self.add_argument("nastring",           is_required=True, default_value=".")
         self.add_argument("dbdir",              is_required=True)
-        self.add_argument("nr_cpus",            is_required=True, default_value=6)
+        self.add_argument("nr_cpus",            is_required=True, default_value=8)
         self.add_argument("mem",                is_required=True, default_value="nr_cpus * 6.5")
 
     def define_output(self):
@@ -33,10 +33,11 @@ class Annovar(Module):
         nastring    = self.get_argument("nastring")
         buildver    = self.get_argument("buildver")
         dbdir       = self.get_argument("dbdir")
+        nr_cpus     = self.get_argument("nr_cpus")
 
         # Generate prefix for final VCF output file
         vcf_out = str(self.get_output("vcf")).rsplit(".hg19_multianno.vcf", 1)[0]
 
-        cmd = "{0} {1} {2} {3} --vcfinput --remove --buildver {4} --outfile {5} --protocol {6} --operation {7} --nastring {8} !LOG3!".format\
-                (perl, annovar, vcf_in, dbdir, buildver, vcf_out, protocol, operation, nastring)
+        cmd = "{0} {1} {2} {3} --vcfinput --remove --buildver {4} --outfile {5} --protocol {6} --operation {7} --nastring {8} --thread {9} !LOG3!".format\
+                (perl, annovar, vcf_in, dbdir, buildver, vcf_out, protocol, operation, nastring, nr_cpus)
         return cmd
