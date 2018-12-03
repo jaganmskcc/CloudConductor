@@ -19,8 +19,12 @@ class Annovar(Module):
         self.add_argument("mem",                is_required=True, default_value="nr_cpus * 6.5")
 
     def define_output(self):
+
+        # Get genome build version
+        buildver = self.get_argument("buildver")
+
         # Declare VCF output filename
-        vcf = self.generate_unique_file_name(extension=".hg19_multianno.vcf")
+        vcf = self.generate_unique_file_name(extension=".{0}_multianno.vcf".format(buildver))
         self.add_output("vcf", vcf)
 
     def define_command(self):
@@ -36,7 +40,7 @@ class Annovar(Module):
         nr_cpus     = self.get_argument("nr_cpus")
 
         # Generate prefix for final VCF output file
-        vcf_out = str(self.get_output("vcf")).rsplit(".hg19_multianno.vcf", 1)[0]
+        vcf_out = str(self.get_output("vcf")).rsplit(".{0}_multianno.vcf".format(buildver), 1)[0]
 
         cmd = "{0} {1} {2} {3} --vcfinput --remove --buildver {4} --outfile {5} --protocol {6} --operation {7} --nastring {8} --thread {9} !LOG3!".format\
                 (perl, annovar, vcf_in, dbdir, buildver, vcf_out, protocol, operation, nastring, nr_cpus)
