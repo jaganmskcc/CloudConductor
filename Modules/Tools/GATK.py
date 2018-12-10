@@ -255,11 +255,9 @@ class BaseRecalibrator(_GATKBase):
         self.define_base_args()
         self.add_argument("bam",                is_required=True)
         self.add_argument("bam_idx",            is_required=True)
-        self.add_argument("chrom_size_list",    is_required=False)
         self.add_argument("dbsnp",              is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=4)
         self.add_argument("mem",                is_required=True, default_value=12)
-        self.add_argument("max_nr_reads",       is_required=True, default_value=2.5*10**7)
 
     def define_output(self):
         # Declare BQSR report file
@@ -269,19 +267,15 @@ class BaseRecalibrator(_GATKBase):
     def define_command(self):
         # Get arguments needed to generate GATK BQSR command
         bam             = self.get_argument("bam")
-        chrom_size_list = self.get_argument("chrom_size_list")
         ref             = self.get_argument("ref")
         dbsnp           = self.get_argument("dbsnp")
         L               = self.get_argument("location")
         XL              = self.get_argument("excluded_location")
         nr_cpus         = self.get_argument("nr_cpus")
-        max_nr_reads    = self.get_argument("max_nr_reads")
+        gatk_version    = self.get_argument("gatk_version")
         bqsr_report     = self.get_output("BQSR_report")
 
         gatk_cmd        = self.get_gatk_command()
-
-        # Convert max_nr_reads to integer if necessary
-        max_nr_reads    = eval(max_nr_reads) if isinstance(max_nr_reads, basestring) else max_nr_reads
 
         output_file_flag = self.get_output_file_flag()
 
@@ -289,26 +283,14 @@ class BaseRecalibrator(_GATKBase):
         opts = list()
         opts.append("-I %s" % bam)
         opts.append("{0} {1}".format(output_file_flag, bqsr_report))
-        opts.append("-nct %d" % nr_cpus)
         opts.append("-R %s" % ref)
         opts.append("-knownSites %s" % dbsnp)
-        opts.append("-cov ReadGroupCovariate")
-        opts.append("-cov QualityScoreCovariate")
-        opts.append("-cov CycleCovariate")
-        opts.append("-cov ContextCovariate")
-
-        # Limit the number of reads processed
-        #try:
-        #    if chrom_size_list is not None:
-        #        logging.info("Determining chromosomes to include for BQSR...")
-        #        chrom_list = BaseRecalibrator.__get_chrom_locations(chrom_size_list, max_nr_reads)
-                # Add the minimum amount of chromosomes to exceed the max_read_nr
-        #        if chrom_list is not None:
-        #            for chrom in chrom_list:
-        #                opts.append("-L \"%s\"" % chrom)
-        #except:
-        #    logging.error("Unable to determine the number of chromosomes for BQSR!")
-        #    raise
+        if gatk_version < 4:
+            opts.append("-nct %d" % nr_cpus)
+            opts.append("-cov ReadGroupCovariate")
+            opts.append("-cov QualityScoreCovariate")
+            opts.append("-cov CycleCovariate")
+            opts.append("-cov ContextCovariate")
 
         # Limit the locations to be processed
         if L is not None:
@@ -326,24 +308,6 @@ class BaseRecalibrator(_GATKBase):
 
         # Generating command for base recalibration
         return "{0} BaseRecalibrator {1} !LOG3!".format(gatk_cmd, " ".join(opts))
-
-    @staticmethod
-    def __get_chrom_locations(chrom_size_list, max_nr_reads):
-        # Obtaining the chromosome alignment information
-        # Analysing the output of idxstats to identify which chromosome location is needed we need
-        chrom_list = list()
-        total = 0
-        for chrom in chrom_size_list:
-            chrom_name = chrom[0]
-            chrom_size = chrom[1]
-            if chrom_name != "*":
-                chrom_list.append(chrom_name)
-                total += int(chrom_size)
-            # If we reached more than maximum number reads, then return the current available list
-            if total >= int(max_nr_reads):
-                return chrom_list
-        # If here, then process the entire file
-        return None
 
 class IndexVCF(_GATKBase):
 
