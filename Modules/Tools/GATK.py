@@ -284,8 +284,10 @@ class BaseRecalibrator(_GATKBase):
         opts.append("-I %s" % bam)
         opts.append("{0} {1}".format(output_file_flag, bqsr_report))
         opts.append("-R %s" % ref)
-        opts.append("-knownSites %s" % dbsnp)
-        if gatk_version < 4:
+        if gatk_version >= 4:
+            opts.append("--known-sites %s" % dbsnp)
+        else:
+            opts.append("-knownSites %s" % dbsnp)
             opts.append("-nct %d" % nr_cpus)
             opts.append("-cov ReadGroupCovariate")
             opts.append("-cov QualityScoreCovariate")
