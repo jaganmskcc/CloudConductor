@@ -170,6 +170,9 @@ class TaskWorker(Thread):
                 # Set the status to finalized
                 self.set_status(self.FINALIZING)
 
+                # Reupdate the list of output files
+                output_files = self.datastore.get_task_output_files(self.task.get_ID())
+
                 # Save output files in workspace output dirs (if any)
                 if len(output_files) > 0:
                     self.module_executor.save_output(output_files, final_output_types)
