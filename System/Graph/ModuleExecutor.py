@@ -13,10 +13,10 @@ class ModuleExecutor(object):
         self.docker_helper  = DockerHelper(self.processor)
         self.docker_image   = docker_image
 
-    def load_input(self, inputs):
-
         # Create workspace directory structure
         self.__create_workspace()
+
+    def load_input(self, inputs):
 
         # List of jobs that have been started in process of loading input
         job_names = []
