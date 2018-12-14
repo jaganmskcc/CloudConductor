@@ -91,7 +91,7 @@ class Module(object):
 
     def update_command(self):
         # Re-generate command and output files to reflect current inputs
-        self.output = {}
+        self.output.clear()
         return self.get_command()
 
     def process_cmd_output(self, out, err):
