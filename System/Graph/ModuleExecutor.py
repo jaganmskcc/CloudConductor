@@ -130,6 +130,9 @@ class ModuleExecutor(object):
             # Update path of output file to reflect new location
             job_names.append(job_name)
             output_file.update_path(new_dir=dest_dir)
+            logging.debug("(%s) Transferring file '%s' from old path '%s' to new path '%s' ('%s')" % (
+                self.task_id, output_file.get_type(), curr_path, output_file.get_path(), output_file.get_transferrable_path()))
+
             count += 1
 
         # Wait for transfers to complete
