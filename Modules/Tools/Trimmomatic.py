@@ -13,8 +13,8 @@ class Trimmomatic (Module):
         self.add_argument("phred_encoding", is_required=True, default_value="Phred+33")
         self.add_argument("trimmomatic",    is_required=True, is_resource=True)
         self.add_argument("adapters",       is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",        is_required=True, default_value="MAX")
-        self.add_argument("mem",            is_required=True, default_value="nr_cpus * 1")
+        self.add_argument("nr_cpus",        is_required=True, default_value="12")
+        self.add_argument("mem",            is_required=True, default_value="12")
 
         # Require java if not being run on docker
         if not self.is_docker:
