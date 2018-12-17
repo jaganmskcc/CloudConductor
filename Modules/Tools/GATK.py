@@ -23,6 +23,7 @@ class _GATKBase(Module):
         # Set chromosome interval specific arguments
         self.add_argument("location")
         self.add_argument("excluded_location")
+        self.add_argument("interval_list")
 
     def get_gatk_command(self):
         # Get input arguments
@@ -93,6 +94,7 @@ class HaplotypeCaller(_GATKBase):
         ref     = self.get_argument("ref")
         L       = self.get_argument("location")
         XL      = self.get_argument("excluded_location")
+        interval = self.get_argument("interval_list")
         gvcf    = self.get_output("gvcf")
         gatk_cmd = self.get_gatk_command()
         gatk_version = self.get_argument("gatk_version")
@@ -123,6 +125,10 @@ class HaplotypeCaller(_GATKBase):
                     opts.append("-XL \"%s\"" % excluded)
             else:
                 opts.append("-XL \"%s\"" % XL)
+
+        # Check if an interval list was provided and if yes, place it
+        if interval is not None:
+            opts.append("-L {0}".format(interval))
 
         # Generating command for HaplotypeCaller
         return "%s HaplotypeCaller %s !LOG3!" % (gatk_cmd, " ".join(opts))
