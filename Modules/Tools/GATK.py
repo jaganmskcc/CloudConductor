@@ -400,7 +400,6 @@ class CollectReadCounts(_GATKBase):
         self.add_argument("bam_idx",        is_required=True)
         self.add_argument("nr_cpus",        is_required=True,   default_value=1)
         self.add_argument("mem",            is_required=True,   default_value=2)
-        self.add_argument("interval_list",  is_required=False)
 
     def define_output(self):
         # Declare recoded VCF output filename
