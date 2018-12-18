@@ -99,6 +99,7 @@ class HaplotypeCaller(_GATKBase):
         gatk_cmd = self.get_gatk_command()
         gatk_version = self.get_argument("gatk_version")
         use_bqsr     = self.get_argument("use_bqsr")
+        nr_cpus = self.get_argument("nr_cpus")
 
         output_file_flag = self.get_output_file_flag()
 
@@ -110,6 +111,12 @@ class HaplotypeCaller(_GATKBase):
         opts.append("-ERC GVCF")
         if BQSR is not None and gatk_version < 4 and use_bqsr:
             opts.append("-BQSR %s" % BQSR)
+
+        # Set the parallelism method
+        if gatk_version < 4:
+            opts.append("-nct {0}".format(nr_cpus))
+        else:
+            opts.append("--native-pair-hmm-threads {0}".format(nr_cpus))
 
         # Limit the locations to be processes
         if L is not None:
