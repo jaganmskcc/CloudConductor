@@ -336,11 +336,16 @@ class GetReadGroup(Module):
         return cmd
 
     def process_cmd_output(self, out, err):
-        # Generating the read group information from command output
-        sample_name     = self.get_argument("sample_name")
-        lib_name        = self.get_argument("lib_name")
-        seq_platform    = self.get_argument("seq_platform")
+
+        # Obtain necessary data
+        lib_name = self.get_argument("lib_name")
+        seq_platform = self.get_argument("seq_platform")
         fastq_header_data = out.lstrip("@").strip("\n").split(":")
+
+        # Generate the correct sample name
+        sample_name = self.get_argument("sample_name").rsplit("_", 1)[0]
+
+        # Generating the read group information from command output
         rg_id = ":".join(fastq_header_data[0:4])  # Read Group ID
         rg_pu = fastq_header_data[-1]  # Read Group Platform Unit
         rg_sm = sample_name if not isinstance(sample_name, list) else sample_name[0]    # Read Group Sample
@@ -348,6 +353,8 @@ class GetReadGroup(Module):
         rg_pl = seq_platform if not isinstance(seq_platform, list) else seq_platform[0] # Read Group Platform used
         read_group_header = "\\t".join(["@RG", "ID:%s" % rg_id, "PU:%s" % rg_pu,
                                         "SM:%s" % rg_sm, "LB:%s" % rg_lb, "PL:%s" % rg_pl])
+
+        # Setting the read group
         logging.info("Read group: %s" % read_group_header)
         self.set_output("read_group", read_group_header)
 

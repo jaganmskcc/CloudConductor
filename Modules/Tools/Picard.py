@@ -1,3 +1,5 @@
+import math
+
 from Modules import Module
 
 class MarkDuplicates(Module):
@@ -235,3 +237,80 @@ class SortGVCF(Module):
 
         # Generating command for base recalibration
         return "{0} SortVcf {1} !LOG3!".format(picard_cmd, " ".join(opts))
+
+
+class DownsampleSam(Module):
+
+    def __init__(self, module_id, is_docker=False):
+        super(DownsampleSam, self).__init__(module_id, is_docker)
+        self.output_keys = ["bam"]
+
+    def define_input(self):
+        self.add_argument("bam",        is_required=True)
+        self.add_argument("nr_reads",   is_required=True)
+        self.add_argument("picard",     is_required=True, is_resource=True)
+        self.add_argument("read_len",   is_required=True, default_value=150)
+        # Maximum probability to still consider downsampling
+        self.add_argument("max_probability",    is_required=True, default_value=0.75)
+        self.add_argument("nr_cpus",    is_required=True, default_value=2)
+        self.add_argument("mem",        is_required=True, default_value=10)
+
+        # Require java if not being run on docker
+        if not self.is_docker:
+            self.add_argument("java", is_required=True, is_resource=True)
+
+    def define_output(self):
+
+        # Get necessary read information
+        read_len = self.get_argument("read_len")
+        nr_reads = self.get_argument("nr_reads")
+        max_prob = self.get_argument("max_probability")
+
+        # Compute the probability. We need at least 1 billion bases, but we will make it 1.5 billion
+        needed_nr_reads = 10 ** 9 * 1.5 / read_len
+        self.probability = math.ceil(needed_nr_reads * 100 / nr_reads) / 100
+
+        # Declare bam output filename
+        if self.probability >= max_prob:
+            # The same file should be kept if no downsampling is needed
+            self.add_output("bam", self.get_argument("bam"))
+        else:
+            # Generate new bam file
+            bam = self.generate_unique_file_name(extension=".downsampled.bam")
+            self.add_output("bam", bam)
+
+    def define_command(self):
+        # Get input arguments
+        bam         = self.get_argument("bam")
+        mem         = self.get_argument("mem")
+        picard      = self.get_argument("picard")
+        max_prob    = self.get_argument("max_probability")
+
+        # Get output filenames
+        output_bam  = self.get_output("bam")
+
+        # Skip everything if the probability is larger than the maximum
+        if self.probability >= max_prob:
+            return None
+
+        # Generate base cmd for running locally
+        if not self.is_docker:
+            java = self.get_argument("java")
+            # Generate JVM arguments
+            jvm_options = "-Xmx{0:d}G -Djava.io.tmp={1}".format(mem * 4 / 5, "/tmp/")
+            basecmd = "{0} {1} -jar {2}".format(java, jvm_options, picard)
+
+        # Generate base cmd for running on docker
+        else:
+            basecmd = str(picard)
+
+        # Generate downsample options
+        opts = list()
+        opts.append("I={0}".format(bam))
+        opts.append("O={0}".format(output_bam))
+        opts.append("P={0:.2g}".format(self.probability))
+
+        # Generating command for downsampling
+        cmd = "{0} DownsampleSam {1} !LOG3!".format(basecmd, " ".join(opts))
+
+        return cmd

@@ -18,8 +18,8 @@ class Star(Module):
         self.add_argument("output_file_type",           default_value="BAM SortedByCoordinate")
         self.add_argument("twopass_mode",               default_value="None")
         self.add_argument("read_group",                 is_required=True)
-        self.add_argument("nr_cpus",                    is_required=True, default_value=8)
-        self.add_argument("mem",                        is_required=True, default_value=30)
+        self.add_argument("nr_cpus",                    is_required=True, default_value=12)
+        self.add_argument("mem",                        is_required=True, default_value=75)
 
     def define_output(self):
         # Declare unique file name

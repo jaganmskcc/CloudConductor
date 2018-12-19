@@ -13,10 +13,10 @@ class ModuleExecutor(object):
         self.docker_helper  = DockerHelper(self.processor)
         self.docker_image   = docker_image
 
-    def load_input(self, inputs):
-
         # Create workspace directory structure
         self.__create_workspace()
+
+    def load_input(self, inputs):
 
         # List of jobs that have been started in process of loading input
         job_names = []
@@ -130,6 +130,9 @@ class ModuleExecutor(object):
             # Update path of output file to reflect new location
             job_names.append(job_name)
             output_file.update_path(new_dir=dest_dir)
+            logging.debug("(%s) Transferring file '%s' from old path '%s' to new path '%s' ('%s')" % (
+                self.task_id, output_file.get_type(), curr_path, output_file.get_path(), output_file.get_transferrable_path()))
+
             count += 1
 
         # Wait for transfers to complete

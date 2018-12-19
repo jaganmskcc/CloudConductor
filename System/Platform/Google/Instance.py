@@ -45,6 +45,9 @@ class Instance(Processor):
         # Number of times creation has been reset
         self.creation_resets = 0
 
+        # API Rate limit errors count
+        self.api_rate_limit_retries = 0
+
     def get_status(self):
         with self.status_lock:
             self.status = self.__sync_status()
@@ -280,14 +283,15 @@ class Instance(Processor):
 
     def throttle_api_rate(self, proc_name, proc_obj):
         # If process fails due to rate limit error, sleep for a random period of time before trying again
-        # Choose random sleep timeout between 5 and 10 minutes
-        sleep_time = random.randint(300, 600)
-        count = 0
+        # Implement an 3-min exponential backoff with an additional random addition of up to 10 minutes
+        sleep_time = 180 * 2**self.api_rate_limit_retries + random.randint(0, 600)
+        self.api_rate_limit_retries += 1
         logging.warning("(%s) Process '%s' failed due to rate limit issue. "
                         "Resting for %s seconds before handling error..." %
                         (self.name, proc_name, sleep_time))
 
         # Wait until sleep timer is up or processor becomes locked externally
+        count = 0
         while not self.is_locked() and count < sleep_time:
             time.sleep(1)
             count += 1

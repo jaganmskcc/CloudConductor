@@ -7,9 +7,18 @@ class _GATKBase(Merger):
         super(_GATKBase, self).__init__(module_id, is_docker)
 
     def define_base_args(self):
+
+        # Set GATK executable arguments
         self.add_argument("java",           is_required=True, is_resource=True)
         self.add_argument("gatk",           is_required=True, is_resource=True)
         self.add_argument("gatk_version",   is_required=True)
+
+        # Set reference specific arguments
+        self.add_argument("ref",            is_required=True, is_resource=True)
+        self.add_argument("ref_idx",        is_required=True, is_resource=True)
+        self.add_argument("ref_dict",       is_required=True, is_resource=True)
+
+        # Set chromosome interval specific arguments
         self.add_argument("location")
         self.add_argument("excluded_location")
 
@@ -33,6 +42,24 @@ class _GATKBase(Merger):
         else:
             return "{0} {1} -jar {2}".format(java, jvm_options, gatk)
 
+    def get_output_file_flag(self):
+        """
+        Function returns an appropriate output file flag for GATK tools based on GATK version
+        Returns: Output file flag in Str format
+
+        """
+
+        # Determine numeric version of GATK
+        gatk_version = self.get_argument("gatk_version")
+        gatk_version = str(gatk_version).lower().replace("gatk", "")
+        gatk_version = gatk_version.strip()
+        gatk_version = int(gatk_version.split(".")[0])
+
+        if gatk_version < 4:
+            return "-o"
+
+        return "-O"
+
 class GenotypeGVCFs(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
@@ -43,7 +70,6 @@ class GenotypeGVCFs(_GATKBase):
         self.define_base_args()
         self.add_argument("gvcf",                is_required=True)
         self.add_argument("gvcf_idx",            is_required=True)
-        self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=6)
         self.add_argument("mem",                is_required=True, default_value=35)
 
@@ -64,6 +90,8 @@ class GenotypeGVCFs(_GATKBase):
         vcf         = self.get_output("vcf")
         gatk_cmd    = self.get_gatk_command()
 
+        output_file_flag = self.get_output_file_flag()
+
         # Generating the haplotype caller options
         opts = list()
 
@@ -72,7 +100,7 @@ class GenotypeGVCFs(_GATKBase):
                 opts.append("--variant %s" % gvcf)
         else:
             opts.append("--variant %s" % gvcf_in)
-        opts.append("-o %s" % vcf)
+        opts.append("{0} {1}".format(output_file_flag, vcf))
         opts.append("-R %s" % ref)
 
         # Limit the locations to be processes
@@ -105,7 +133,6 @@ class Mutect2(_GATKBase):
         self.add_argument("bam_idx",            is_required=True)
         self.add_argument("sample_name",        is_required=True)
         self.add_argument("is_tumor",           is_required=True)
-        self.add_argument("ref",                is_required=True,   is_resource=True)
         self.add_argument("germline_vcf",       is_required=False,  is_resource=True)
         self.add_argument("nr_cpus",            is_required=True,   default_value=8)
         self.add_argument("mem",                is_required=True,   default_value=30)
@@ -132,6 +159,8 @@ class Mutect2(_GATKBase):
 
         gatk_cmd        = self.get_gatk_command()
 
+        output_file_flag = self.get_output_file_flag()
+
         # Generating the MuTect2 options
         opts = list()
 
@@ -148,7 +177,7 @@ class Mutect2(_GATKBase):
         normal_bams = ["-I %s" % bam for bam in bams[1] ] if isinstance(bams[1], list) else ["-I %s" % bams[1]]
         opts += tumor_bams + normal_bams
 
-        opts.append("-O %s" % vcf)
+        opts.append("{0} {1}".format(output_file_flag, vcf))
         opts.append("-R %s" % ref)
         opts.append("--native-pair-hmm-threads %s" % nr_cpus)
 
@@ -195,7 +224,11 @@ class MergeBQSRs(_GATKBase):
         bqsrs_in    = self.get_argument("BQSR_report")
         bqsr_out    = self.get_output("BQSR_report")
         gatk_cmd    = self.get_gatk_command()
-        return "{0} GatherBQSRReports --input {1} -O {2} !LOG3!".format(gatk_cmd, " --input ".join(bqsrs_in), bqsr_out)
+
+        output_file_flag = self.get_output_file_flag()
+
+        return "{0} GatherBQSRReports --input {1} {3} {2} !LOG3!".format(gatk_cmd, " --input ".join(bqsrs_in),
+                                                                         bqsr_out, output_file_flag)
 
 class CatVariants(_GATKBase):
     # Merger module intended to merge gVCF files within samples (i.e. re-combine chromosomes)
@@ -205,21 +238,19 @@ class CatVariants(_GATKBase):
         self.output_keys  = ["gvcf", "gvcf_idx"]
 
     def define_input(self):
+        self.define_base_args()
         self.add_argument("gvcf",       is_required=True)
         self.add_argument("gvcf_idx",   is_required=True)
-        self.add_argument("gatk",       is_required=True, is_resource=True)
-        self.add_argument("ref",        is_required=True, is_resource=True)
-        self.add_argument("ref_dict",   is_required=True, is_resource=True)
         self.add_argument("nr_cpus",    is_required=True, default_value=2)
         self.add_argument("mem",        is_required=True, default_value=13)
-        self.add_argument("java",       is_required=True, is_resource=True)
 
     def define_output(self):
-        # Declare merged GVCF output filename
-        gvcf = self.generate_unique_file_name(extension=".g.vcf")
+        # Declare GVCF output filename
+        randomer = Platform.generate_unique_id()
+        gvcf = self.generate_unique_file_name(extension="{0}.g.vcf".format(randomer))
         self.add_output("gvcf", gvcf)
         # Declare GVCF index output filename
-        gvcf_idx = gvcf + ".idx"
+        gvcf_idx = self.generate_unique_file_name(extension="{0}.g.vcf.idx".format(randomer))
         self.add_output("gvcf_idx", gvcf_idx)
 
     def define_command(self):
@@ -236,7 +267,7 @@ class CatVariants(_GATKBase):
 
         # Generating the CatVariants options
         opts = list()
-        opts.append("-out %s" % gvcf_out)
+        opts.append("-out {0}".format(gvcf_out))
         opts.append("-R %s" % ref)
         if isinstance(gvcf_in, list):
             for gvcf_input in gvcf_in:
@@ -261,7 +292,6 @@ class CombineGVCF(_GATKBase):
         self.define_base_args()
         self.add_argument("gvcf",               is_required=True)
         self.add_argument("gvcf_idx",           is_required=True)
-        self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=8)
         self.add_argument("mem",                is_required=True, default_value=16)
 
@@ -285,9 +315,11 @@ class CombineGVCF(_GATKBase):
 
         gatk_cmd    = self.get_gatk_command()
 
+        output_file_flag = self.get_output_file_flag()
+
         # Generating the combine options
         opts = list()
-        opts.append("-o %s" % gvcf_out)
+        opts.append("{0} {1}".format(output_file_flag, gvcf_out))
         opts.append("-R %s" % ref)
         opts.append("-U ALLOW_SEQ_DICT_INCOMPATIBILITY") # Option that allows dictionary incompatibility
         for gvcf_input in gvcf_list:
