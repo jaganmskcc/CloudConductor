@@ -465,3 +465,84 @@ class GetRefChroms(Module):
 
         logging.info("Chrom List: %s" % ",".join(chrom_list))
         self.set_output("chrom_list", chrom_list)
+
+
+class GetCellBarcodes(Module):
+    def __init__(self, module_id, is_docker=False):
+        super(GetCellBarcodes, self).__init__(module_id, is_docker)
+        self.output_keys = ["barcode_list"]
+
+    def define_input(self):
+        self.add_argument("barcode_file", is_required=True)
+        self.add_argument("nr_cpus",      is_required=True, default_value=1)
+        self.add_argument("mem",          is_required=True, default_value=1)
+
+    def define_output(self):
+        self.add_output("barcode_list", None, is_path=False)
+
+    def define_command(self):
+        # Cat the input so you can read the file
+        barcode_file = self.get_argument("barcode_file")
+        cmd = "cat {0}".format(barcode_file)
+        return cmd
+
+    def process_cmd_output(self, out, err):
+        # Process the output into a Python list
+        barcode_list = out.strip().split(",")
+
+        # Check to see that formatting is okay
+        if len(barcode_list) == 0:
+            raise RuntimeError("Empty output")
+        else:
+            for barcode in barcode_list:
+                # We expect each barcode to be 16 bp and only contain ACTG
+                if not ((len(barcode) == 16) and (set(barcode).issubset({"A", "C", "T", "G"}))):
+                    raise RuntimeError("Format of barcode input file is incorrect. Expected a file with one line of "
+                                       "16-bp barcodes separated by commas.")
+
+        # Log number of barcodes
+        logging.info("Number of cellular barcodes: {0}".format(len(barcode_list)))
+
+        self.set_output("barcode_list", barcode_list)
+
+class SubsetBamByBarcode(Module):
+    def __init__(self, module_id, is_docker=False):
+        super(SubsetBamByBarcode, self).__init__(module_id, is_docker)
+        self.output_keys = ["bam"]
+
+    def define_input(self):
+        self.add_argument("barcode",  is_required=True)
+        self.add_argument("bam",      is_required=True)
+        self.add_argument("samtools", is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",  is_required=True, default_value=1)
+        self.add_argument("mem",      is_required=True, default_value=1)
+
+    def define_output(self):
+        bam_out = self.generate_unique_file_name(extension=".bam")
+        self.add_output("bam", bam_out)
+
+    def define_command(self):
+        # Get arguments
+        barcode    = self.get_argument("barcode")
+        input_bam  = self.get_argument("bam")
+        output_bam = self.get_output("bam")
+        samtools   = self.get_argument("samtools")
+
+        # Generating the commands that will be piped together
+        cmds = list()
+
+        # View BAM as a SAM so you can read the barcode; include the SAM header with -h
+        cmds.append("{0} view -h {1}".format(samtools, input_bam))
+
+        # Select only the header and reads with the barcode
+        cmds.append("grep -e '@' -e 'CB:Z:{0}' -".format(barcode))
+        #cmds.append("grep -E '@|CB:Z:{0}' -".format(barcode))
+        #cmds.append("grep -P '@' - ")
+
+        # Convert back to BAM and write to output
+        cmds.append("{0} view -S -b - > {1} !LOG2! ".format(samtools, output_bam))
+
+        # Pipe everything together
+        cmd = " | ".join(cmds)
+
+        return cmd

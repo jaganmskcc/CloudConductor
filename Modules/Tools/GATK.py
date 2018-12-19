@@ -513,7 +513,7 @@ class SplitNCigarReads(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
         super(SplitNCigarReads, self).__init__(module_id, is_docker)
-        self.output_keys  = ["bam", "bam_idx"]
+        self.output_keys  = ["bam"]
 
     def define_input(self):
         self.define_base_args()
@@ -526,30 +526,23 @@ class SplitNCigarReads(_GATKBase):
         # Declare BAM output filename
         bam = self.generate_unique_file_name(extension=".split.bam")
         self.add_output("bam", bam)
-        # Declare BAM index output filename
-        bam_idx = "{0}.bai".format(bam)
-        self.add_output("bam_idx", bam_idx)
 
     def define_command(self):
         # Get arguments needed to generated a SplitNCigarReads command
-        bam     = self.get_argument("bam")
+        bam        = self.get_argument("bam")
         output_bam = self.get_output("bam")
-        nr_cpus = self.get_argument("nr_cpus")
-        ref = self.get_argument("ref")
+        ref        = self.get_argument("ref")
 
+        # Get JVM options and GATK command
         gatk_cmd = self.get_gatk_command()
+
+        output_file_flag = self.get_output_file_flag()
 
         # Generating the options for splitting reads with N in cigar string
         opts = list()
-        opts.append("-nct {}".format(nr_cpus))
-        opts.append("-R {}".format(ref))
-        opts.append("-I {}".format(bam))
-        opts.append("-o {}".format(output_bam))
-        opts.append("-U ALLOW_N_CIGAR_READS")
-        opts.append("-rf ReassignOneMappingQuality")
-        opts.append("-RMQF 255")
-        opts.append("-RMQT 60")
-        opts.append("-fixNDN")
+        opts.append("-R {0}".format(ref))
+        opts.append("-I {0}".format(bam))
+        opts.append("{0} {1}".format(output_file_flag, output_bam))
 
         # Generate command for splitting reads
         return "{0} SplitNCigarReads {1} !LOG3!".format(gatk_cmd, " ".join(opts))
