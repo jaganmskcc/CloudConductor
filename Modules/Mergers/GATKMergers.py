@@ -307,13 +307,18 @@ class CombineGVCF(_GATKBase):
     def define_command(self):
 
         # Obtaining the arguments
-        gvcf_list   = self.get_argument("gvcf")
-        ref         = self.get_argument("ref")
-        L           = self.get_argument("location")
-        XL          = self.get_argument("excluded_location")
-        gvcf_out    = self.get_output("gvcf")
+        gvcf_list    = self.get_argument("gvcf")
+        ref          = self.get_argument("ref")
+        L            = self.get_argument("location")
+        XL           = self.get_argument("excluded_location")
+        gvcf_out     = self.get_output("gvcf")
+        gatk_version = self.get_argument("gatk_version")
 
-        gatk_cmd    = self.get_gatk_command()
+        gatk_version = str(gatk_version).lower().replace("gatk", "")
+        gatk_version = gatk_version.strip()
+        gatk_version = int(gatk_version.split(".")[0])
+
+        gatk_cmd = self.get_gatk_command()
 
         output_file_flag = self.get_output_file_flag()
 
@@ -321,11 +326,16 @@ class CombineGVCF(_GATKBase):
         opts = list()
         opts.append("{0} {1}".format(output_file_flag, gvcf_out))
         opts.append("-R %s" % ref)
-        opts.append("-U ALLOW_SEQ_DICT_INCOMPATIBILITY") # Option that allows dictionary incompatibility
+
+        # Option that allows dictionary incompatibility
+        # Unsafe options are not permitted in GATK4, so only add if using GATK3
+        if gatk_version < 4:
+            opts.append("-U ALLOW_SEQ_DICT_INCOMPATIBILITY")
+
         for gvcf_input in gvcf_list:
             opts.append("-V %s" % gvcf_input)
 
-        # Limit the locations to be processes
+        # Limit the locations to be processed
         if L is not None:
             if isinstance(L, list):
                 for included in L:

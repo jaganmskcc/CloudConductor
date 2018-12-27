@@ -546,3 +546,31 @@ class SubsetBamByBarcode(Module):
         cmd = " | ".join(cmds)
 
         return cmd
+
+class ReplaceGVCFSampleName(Module):
+    def __init__(self, module_id, is_docker=False):
+        super(ReplaceGVCFSampleName, self).__init__(module_id, is_docker)
+        self.output_keys = ["gvcf"]
+
+    def define_input(self):
+        self.add_argument("barcode",      is_required=True)
+        self.add_argument("gvcf",         is_required=True)
+        self.add_argument("sample_name",  is_required=True)
+        self.add_argument("nr_cpus",      is_required=True, default_value=1)
+        self.add_argument("mem",          is_required=True, default_value=1)
+
+    def define_output(self):
+        gvcf = self.generate_unique_file_name(extension=".g.vcf")
+        self.add_output("gvcf", gvcf)
+
+    def define_command(self):
+        sample_name = self.get_argument("sample_name")
+        barcode     = self.get_argument("barcode")
+        gvcf_in     = self.get_argument("gvcf")
+        gvcf_out    = self.get_output("gvcf")
+
+        # The one line with the sample name at the end of the line ($) is the header line #CHROM ... sample_name,
+        # so we replace that sample name with the barcode
+        cmd = 'sed "s/{0}$/{1}/g" {2} > {3}'.format(sample_name, barcode, gvcf_in, gvcf_out)
+
+        return cmd
