@@ -135,7 +135,7 @@ class TaskWorker(Thread):
                 logging.debug("(%s) Successfully acquired processor!" % self.task.get_ID())
             else:
                 # Get small processor
-                self.proc = self.platform.get_processor(self.task.get_ID(), 1, 1, 10)
+                self.proc = self.platform.get_processor(self.task.get_ID(), 1, 1, disk_space)
                 logging.debug("(%s) Successfully acquired processor!" % self.task.get_ID())
 
             # Check to see if pipeline has been cancelled
