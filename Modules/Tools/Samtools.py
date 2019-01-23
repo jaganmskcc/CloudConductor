@@ -102,7 +102,7 @@ class Idxstats(Module):
 class View(Module):
     def __init__(self, module_id, is_docker=False):
         super(View, self).__init__(module_id, is_docker)
-        self.output_keys = ["bam", "bam_idx"]
+        self.output_keys = ["bam", "bam_idx", "read_count_file"]
 
     def define_input(self):
         self.add_argument("bam",            is_required=True)
