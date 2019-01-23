@@ -1,4 +1,5 @@
 from Modules import Module
+import logging
 
 class Index(Module):
     def __init__(self, module_id, is_docker = False):
@@ -109,16 +110,23 @@ class View(Module):
         self.add_argument("samtools",       is_required=True, is_resource=True)
         self.add_argument("nr_cpus",        is_required=True, default_value=4)
         self.add_argument("mem",            is_required=True, default_value=6)
+        self.add_argument("count_reads",    is_required=False, default_value=False)
+        self.add_argument("bed",            is_required=False, is_resource=True)
         self.add_argument("location",       is_required=False)
         self.add_argument("exclude_flag",   is_required=False)
         self.add_argument("include_flag",   is_required=False)
         self.add_argument("outfmt",         is_required=True, default_value="b")
 
     def define_output(self):
-        bam_out = self.generate_unique_file_name(extension=".bam")
-        bam_idx = "%s.bai" % bam_out
-        self.add_output("bam",      bam_out)
-        self.add_output("bam_idx",  bam_idx)
+        # generate file name for read counts only if the user asked for it
+        if self.get_argument("count_reads"):
+            count_file = self.generate_unique_file_name(extension=".read_counts.txt")
+            self.add_output("read_count_file", count_file)
+        else:
+            bam_out = self.generate_unique_file_name(extension=".bam")
+            bam_idx = "%s.bai" % bam_out
+            self.add_output("bam",      bam_out)
+            self.add_output("bam_idx",  bam_idx)
 
     def define_command(self):
         # Define command for running samtools view from a platform
@@ -129,8 +137,12 @@ class View(Module):
         exclude_flag    = self.get_argument("exclude_flag")
         include_flag    = self.get_argument("include_flag")
         outfmt          = self.get_argument("outfmt")
-        bam_out         = self.get_output("bam")
-        bam_out_idx     = self.get_output("bam_idx")
+        count_reads     = self.get_argument("count_reads")
+        bed             = self.get_argument("bed")
+
+        # genomic regions in the BED file and as location are not allowed at the same time
+        if bed is not None and location is not None:
+            logging.error("BED file and location can not be provided at the same time. Advise to use either of them.")
 
         # Create base samtools view command
         cmd = "%s view -@ %d -%s %s" % (samtools, nr_cpus, outfmt, bam)
@@ -142,6 +154,10 @@ class View(Module):
         if include_flag is not None:
             cmd = "%s -f %s" % (cmd, include_flag)
 
+        # Add commands to subset on region given in the BED file
+        if bed is not None:
+            cmd = "%s -L %s" % (cmd, bed)
+
         # Add commands to subset region
         if location is not None:
             if isinstance(location, list):
@@ -150,14 +166,23 @@ class View(Module):
                 reg = location
             cmd = "%s %s " % (cmd, reg)
 
-        # Generating samtools view command
-        view_cmd = "%s > %s" % (cmd, bam_out)
+        # Add command to only count the overlap reads and not print the overlapping reads to a file
+        if count_reads:
+            count_file = self.get_output("read_count_file")
+            count_cmd = "%s -c > %s" % (cmd, count_file)
+            return "%s !LOG2!" % count_cmd
+        else:
+            bam_out = self.get_output("bam")
+            bam_out_idx = self.get_output("bam_idx")
 
-        # Generating samtools index command
-        index_cmd = "%s index %s %s" % (samtools, bam_out, bam_out_idx)
+            # Generating samtools view command
+            view_cmd = "%s > %s" % (cmd, bam_out)
 
-        # Combine both into single command
-        return "%s !LOG2! && %s !LOG2!" % (view_cmd, index_cmd)
+            # Generating samtools index command
+            index_cmd = "%s index %s %s" % (samtools, bam_out, bam_out_idx)
+
+            # Combine both into single command
+            return "%s !LOG2! && %s !LOG2!" % (view_cmd, index_cmd)
 
 
 class Depth(Module):
