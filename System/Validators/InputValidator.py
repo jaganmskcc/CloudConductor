@@ -7,7 +7,7 @@ from System.Platform import StorageHelper, DockerHelper
 
 class InputValidator(Validator):
 
-    def __init__(self, resource_kit, sample_data, storage_helper, docker_helper, num_threads=75):
+    def __init__(self, resource_kit, sample_data, storage_helper, docker_helper, num_threads=25):
         super(InputValidator, self).__init__()
         # Check whether all input files declared in resource kit and sample data exist
         self.resources  = resource_kit
