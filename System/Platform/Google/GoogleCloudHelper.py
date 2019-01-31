@@ -253,6 +253,17 @@ class GoogleCloudHelper:
         return "/".join(path.split("/")[0:3]) + "/"
 
     @staticmethod
+    def bucket_exists(gs_bucket):
+        cmd = "gsutil ls gs://"
+        out = GoogleCloudHelper.run_cmd(cmd, "Unable to obtain the list of buckets.")
+
+        for bucket_path in out.split("\n"):
+            if bucket_path.rstrip("/") == gs_bucket.rstrip("/"):
+                return True
+
+        return False
+
+    @staticmethod
     def gs_path_exists(gs_path):
         # Check if path exists on google bucket storage
         cmd = "gsutil ls %s" % gs_path
