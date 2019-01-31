@@ -34,6 +34,8 @@ class ModuleExecutor(object):
         src_seen = []
         dest_seen = []
         count = 1
+        batch_size = 30
+        loading_counter = 0
         for task_input in inputs:
 
             # Don't transfer local files
@@ -74,11 +76,21 @@ class ModuleExecutor(object):
                 self.storage_helper.mv(src_path=src_path,
                                        dest_path=dest_path,
                                        job_name=job_name)
-
+                loading_counter += 1
+                
                 # Add transfer path to list of remote paths that have been transferred to local workspace
                 src_seen.append(src_path)
                 count += 1
                 job_names.append(job_name)
+                
+                # If loading_counter is batch_size, clear out queue
+                if loading_counter >= batch_size:
+                    logging.debug("Batch size reached on task {0}".format(
+                        self.task_id))
+                    # Wait for all processes to finish
+                    while len(job_names):
+                        self.processor.wait_process(job_names.pop())
+                    loading_counter = 0
 
             # Update path after transferring to wrk directory and add to list of files in working directory
             task_input.update_path(new_dir=dest_dir, new_filename=dest_filename)
