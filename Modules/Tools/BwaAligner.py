@@ -13,7 +13,7 @@ class BwaAligner(Module):
         self.add_argument("ref",            is_required=True, is_resource=True)
         self.add_argument("read_group",     is_required=True)
         self.add_argument("nr_cpus",        is_required=True, default_value="max")
-        self.add_argument("mem",            is_required=True, default_value="max(nr_cpus * 2.5, 20)")
+        self.add_argument("mem",            is_required=True, default_value="max(nr_cpus * 3, 35)")
 
     def define_output(self):
         # Declare bam output file
