@@ -152,7 +152,7 @@ class AggregateRSEMResults(Merger):
                  isoform_expression_gene_metadata_file_name, count_type,
                  genes_input_file, gene_expression_file_name, gene_expression_gene_metadata_file_name)
 
-        return "{0} ; {1} ; {2}".format(mk_sample_sheet_cmd1, mk_sample_sheet_cmd2, cmd)
+        return [mk_sample_sheet_cmd1, mk_sample_sheet_cmd2, cmd]
 
 class Cuffnorm(Merger):
     def __init__(self, module_id, is_docker = False):
