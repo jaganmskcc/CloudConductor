@@ -105,11 +105,15 @@ class ModuleExecutor(object):
         logging.info("(%s) Final workspace perm. update for task '%s'..." % (self.processor.name, self.task_id))
         self.__grant_workspace_perms(job_name="grant_final_wrkspace_perms")
 
-    def run(self, cmd):
-        # Job name
-        job_name = self.task_id
+    def run(self, cmd, job_name=None):
+
+        # Check or create job name
+        if job_name is None:
+            job_name = self.task_id
+
         # Get name of docker image where command should be run (if any)
         docker_image_name = None if self.docker_image is None else self.docker_image.get_image_name()
+
         # Begin running job and return stdout, stderr after job has finished running
         self.processor.run(job_name, cmd, docker_image=docker_image_name)
         return self.processor.wait_process(job_name)
