@@ -13,6 +13,9 @@ def generate_sample_sheet_cmd(sample_names, sample_files, outfile, in_type=None)
     # Define the output file as a bash variable
     cmds.append("o={0}".format(outfile))
 
+    # Define the containing directory of the input files
+    cmds.append("i={0}".format(os.path.dirname(sample_files[0])))
+
     #iterate through all the samples to create a sample info file for Rscript
     for index in range(len(sample_names)):
         if index == 0:
@@ -21,9 +24,9 @@ def generate_sample_sheet_cmd(sample_names, sample_files, outfile, in_type=None)
             else:
                 cmds.append('echo -e "samples\\tfiles" > $o')
         if in_type == "cuffquant":
-            cmds.append('echo -e "{0}\\t{1}" >> $o'.format(sample_files[index], sample_names[index]))
+            cmds.append('echo -e "$i/{0}\\t{1}" >> $o'.format(os.path.basename(sample_files[index]), sample_names[index]))
         else:
-            cmds.append('echo -e "{0}\\t{1}" >> $o'.format(sample_names[index], sample_files[index]))
+            cmds.append('echo -e "{0}\\t$i/{1}" >> $o'.format(sample_names[index], os.path.basename(sample_files[index])))
     return " ; ".join(cmds)
 
 class AggregateRawReadCounts(Merger):
