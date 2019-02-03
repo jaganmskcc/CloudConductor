@@ -182,7 +182,7 @@ class TaskWorker(Thread):
                         job_name = "{0}_{1}".format(self.task.get_ID(), cmd_id)
 
                         # Run the actual command
-                        out, err = self.module_executor.run(self.cmd, job_name=job_name)
+                        out, err = self.module_executor.run(cmd, job_name=job_name)
 
                         # Check to see if pipeline has been cancelled
                         self.__check_cancelled()
