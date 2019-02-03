@@ -122,33 +122,42 @@ class TaskWorker(Thread):
             # Specify that module output files should be placed in task's working directory
             self.module.set_output_dir(task_workspace.get_wrk_dir())
 
-            # Obtain the list of output files and files that need to be as final output
-            output_files = self.datastore.get_task_output_files(self.task.get_ID())
-            final_output_types = self.task.get_final_output_keys()
+            # Execute command if one exists
+            self.set_status(self.LOADING)
 
-            # Run command on processor if there's one to run
-            if self.module.get_command() is not None:
+            # Check if there is any command that needs to be run
+            has_command = self.module.get_command() is not None
 
-                # Execute command if one exists
-                self.set_status(self.LOADING)
-
+            # Create the specific processor for the task
+            if has_command:
                 # Get processor capable of running job
                 self.proc = self.platform.get_processor(self.task.get_ID(), cpus, mem, disk_space)
                 logging.debug("(%s) Successfully acquired processor!" % self.task.get_ID())
+            else:
+                # Get small processor
+                self.proc = self.platform.get_processor(self.task.get_ID(), 1, 1, disk_space)
+                logging.debug("(%s) Successfully acquired processor!" % self.task.get_ID())
 
-                # Check to see if pipeline has been cancelled
-                self.__check_cancelled()
+            # Check to see if pipeline has been cancelled
+            self.__check_cancelled()
 
-                # Create the processor object
-                self.proc.create()
+            # Create the processor
+            self.proc.create()
 
-                self.module_executor = ModuleExecutor(task_id=self.task.get_ID(),
-                                                      processor=self.proc,
-                                                      workspace=task_workspace,
-                                                      docker_image=docker_image)
+            # Check to see if pipeline has been cancelled
+            self.__check_cancelled()
 
-                # Check to see if pipeline has been cancelled
-                self.__check_cancelled()
+            # Create module executor
+            self.module_executor = ModuleExecutor(task_id=self.task.get_ID(),
+                                                  processor=self.proc,
+                                                  workspace=task_workspace,
+                                                  docker_image=docker_image)
+
+            # Check to see if pipeline has been cancelled
+            self.__check_cancelled()
+
+            # Run the command if there is any command to be run
+            if has_command:
 
                 # Load task inputs onto module executor
                 self.module_executor.load_input(input_files)
@@ -159,56 +168,46 @@ class TaskWorker(Thread):
                 # Update module's command to reflect changes to input paths
                 self.set_status(self.RUNNING)
                 self.cmd = self.module.update_command()
-                out, err = self.module_executor.run(self.cmd)
 
-                # Check to see if pipeline has been cancelled
-                self.__check_cancelled()
+                # Check if we received a list of commands or only one
+                if isinstance(self.cmd, list):
 
-                # Post-process command output if necessary
-                self.module.process_cmd_output(out, err)
+                    # Initialize the output and error placeholders
+                    out, err = None, None
 
-                # Set the status to finalized
-                self.set_status(self.FINALIZING)
+                    # Process each command
+                    for cmd_id, cmd in enumerate(self.cmd):
 
-                # Reupdate the list of output files
-                output_files = self.datastore.get_task_output_files(self.task.get_ID())
+                        # Create a unique job_name
+                        job_name = "{0}_{1}".format(self.task.get_ID(), cmd_id)
 
-                # Save output files in workspace output dirs (if any)
-                if len(output_files) > 0:
-                    self.module_executor.save_output(output_files, final_output_types)
+                        # Run the actual command
+                        out, err = self.module_executor.run(self.cmd, job_name=job_name)
 
-            # Otherwise, check if there are output files that need to be saved
-            elif len(output_files) > 0 and len(final_output_types) > 0:
+                        # Check to see if pipeline has been cancelled
+                        self.__check_cancelled()
 
-                # There is no command to run, but we need to create a small instance to move the final output
-                self.set_status(self.LOADING)
+                    # Post-process only last command output if necessary
+                    self.module.process_cmd_output(out, err)
 
-                # Get small processor
-                self.proc = self.platform.get_processor(self.task.get_ID(), 1, 1, 10)
-                logging.debug("(%s) Successfully acquired processor!" % self.task.get_ID())
+                else:
 
-                # Check to see if pipeline has been cancelled
-                self.__check_cancelled()
+                    # Run the actual command
+                    out, err = self.module_executor.run(self.cmd)
 
-                # Create the processor object
-                self.proc.create()
+                    # Check to see if pipeline has been cancelled
+                    self.__check_cancelled()
 
-                # Check to see if pipeline has been cancelled
-                self.__check_cancelled()
+                    # Post-process command output if necessary
+                    self.module.process_cmd_output(out, err)
 
-                # Create module executor
-                self.module_executor = ModuleExecutor(task_id=self.task.get_ID(),
-                                                      processor=self.proc,
-                                                      workspace=task_workspace,
-                                                      docker_image=docker_image)
+            # Set the status to finalized
+            self.set_status(self.FINALIZING)
 
-                # Check to see if pipeline has been cancelled
-                self.__check_cancelled()
-
-                # Set status to finalizing as no command was needed to be run
-                self.set_status(self.FINALIZING)
-
-                # Output the files in workspace out
+            # Save output files in workspace output dirs (if any)
+            output_files = self.datastore.get_task_output_files(self.task.get_ID())
+            final_output_types = self.task.get_final_output_keys()
+            if len(output_files) > 0:
                 self.module_executor.save_output(output_files, final_output_types)
 
             # Indicate that task finished without any errors

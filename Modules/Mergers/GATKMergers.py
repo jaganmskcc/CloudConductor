@@ -215,9 +215,19 @@ class MergeBQSRs(_GATKBase):
         self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
 
     def define_output(self):
-        # Declare merged bam output file
-        bqsr_out = self.generate_unique_file_name(extension=".merged.grp")
-        self.add_output("BQSR_report", bqsr_out)
+
+        # Get the BQSR input
+        bqsrs_in = self.get_argument("BQSR_report")
+
+        # Check if the output is one file or multiple files
+        if isinstance(bqsrs_in, list):
+
+            # Declare merged bam output file
+            bqsr_out = self.generate_unique_file_name(extension=".merged.grp")
+            self.add_output("BQSR_report", bqsr_out)
+
+        else:
+            self.add_output("BQSR_report", bqsrs_in)
 
     def define_command(self):
         # Obtaining the arguments
@@ -227,8 +237,12 @@ class MergeBQSRs(_GATKBase):
 
         output_file_flag = self.get_output_file_flag()
 
-        return "{0} GatherBQSRReports --input {1} {3} {2} !LOG3!".format(gatk_cmd, " --input ".join(bqsrs_in),
-                                                                         bqsr_out, output_file_flag)
+        # Making sure that the input is a list of files
+        if isinstance(bqsrs_in, list):
+            return "{0} GatherBQSRReports --input {1} {3} {2} !LOG3!".format(gatk_cmd, " --input ".join(bqsrs_in),
+                                                                             bqsr_out, output_file_flag)
+        else:
+            return None
 
 class CatVariants(_GATKBase):
     # Merger module intended to merge gVCF files within samples (i.e. re-combine chromosomes)

@@ -46,7 +46,8 @@ class GooglePlatform(Platform):
 
         # Make gs bucket if it doesn't exists already
         gs_bucket = GoogleCloudHelper.get_bucket_from_path(self.final_output_dir)
-        if not GoogleCloudHelper.gs_path_exists(gs_bucket):
+        if not GoogleCloudHelper.bucket_exists(gs_bucket):
+            logging.info("Bucket {0} does not exists. Creating it now!".format(gs_bucket))
             region = GoogleCloudHelper.get_region(self.zone)
             GoogleCloudHelper.mb(gs_bucket, project=self.google_project, region=region)
 

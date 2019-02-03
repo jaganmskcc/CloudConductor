@@ -114,6 +114,7 @@ class Processor(object):
         kwargs["num_retries"] = num_retries
         kwargs["docker_image"] = docker_image
         kwargs["quiet_failure"] = quiet_failure
+        kwargs["close_fds"] = True
 
         # Add process to list of processes
         self.processes[job_name] = Process(cmd, **kwargs)

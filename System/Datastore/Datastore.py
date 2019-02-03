@@ -235,8 +235,9 @@ class Datastore(object):
 
             # If not in config input, should only be one resource of type "arg_key"
             else:
-                # There should be only one resource of type "arg_key"
-                args = [self.resource_kit.get_resources(arg_type).values()[0]]
+                # Only return the resource of type "arg_key" if it is one value
+                if len(self.resource_kit.get_resources(arg_type)) == 1:
+                    args = [self.resource_kit.get_resources(arg_type).values()[0]]
 
         return args
 

@@ -205,6 +205,7 @@ class GetNumReadsTrimmomatic(_QCReportReader):
             num_reads = qc_report.fetch_values(sample_name,
                                                module="Trimmomatic",
                                                data_type="Trimmed_Reads")
+
         # Raise any errors
         except BaseException, e:
             logging.error("GetNumReads unable to get number of reads from QCReport!")
@@ -217,8 +218,8 @@ class GetNumReadsTrimmomatic(_QCReportReader):
             logging.error("GetNumReads could not find any Trimmomatic num reads which matched the search criteria!")
             raise RuntimeError("GetNumReads could not determine the number of Trimmomatic reads from the QCReport!")
 
-        # Sum R1, R2 for paired end reads (will also work for single end reads where only one record is present)
-        num_reads = sum(num_reads)
+        # Get total number of trimmed reads (R1+R2)
+        num_reads = num_reads[0]
         logging.info("Num reads: %s" % num_reads)
         # Update num reads
         self.set_output("nr_reads", num_reads)
