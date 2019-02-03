@@ -172,6 +172,9 @@ class TaskWorker(Thread):
                 # Check if we received a list of commands or only one
                 if isinstance(self.cmd, list):
 
+                    logging.info("Task '{0}' has a list of commands, so we will run them sequentially.".format(
+                        self.task.get_ID()))
+
                     # Initialize the output and error placeholders
                     out, err = None, None
 
