@@ -535,9 +535,7 @@ class SubsetBamByBarcode(Module):
         cmds.append("{0} view -h {1}".format(samtools, input_bam))
 
         # Select only the header and reads with the barcode
-        cmds.append("grep -e '@' -e 'CB:Z:{0}' -".format(barcode))
-        #cmds.append("grep -E '@|CB:Z:{0}' -".format(barcode))
-        #cmds.append("grep -P '@' - ")
+        cmds.append("grep -e '^@' -e 'CB:Z:{0}' -".format(barcode))
 
         # Convert back to BAM and write to output
         cmds.append("{0} view -S -b - > {1} !LOG2! ".format(samtools, output_bam))
