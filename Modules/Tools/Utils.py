@@ -465,3 +465,111 @@ class GetRefChroms(Module):
 
         logging.info("Chrom List: %s" % ",".join(chrom_list))
         self.set_output("chrom_list", chrom_list)
+
+
+class GetCellBarcodes(Module):
+    def __init__(self, module_id, is_docker=False):
+        super(GetCellBarcodes, self).__init__(module_id, is_docker)
+        self.output_keys = ["barcode_list"]
+
+    def define_input(self):
+        self.add_argument("barcode_file", is_required=True)
+        self.add_argument("nr_cpus",      is_required=True, default_value=1)
+        self.add_argument("mem",          is_required=True, default_value=1)
+
+    def define_output(self):
+        self.add_output("barcode_list", None, is_path=False)
+
+    def define_command(self):
+        # Cat the input so you can read the file
+        barcode_file = self.get_argument("barcode_file")
+        cmd = "cat {0}".format(barcode_file)
+        return cmd
+
+    def process_cmd_output(self, out, err):
+        # Process the output into a Python list
+        barcode_list = out.strip().split(",")
+
+        # Check to see that formatting is okay
+        if len(barcode_list) == 0:
+            raise RuntimeError("Empty output")
+        else:
+            for barcode in barcode_list:
+                # We expect each barcode to be 16 bp and only contain ACTG
+                if not ((len(barcode) == 16) and (set(barcode).issubset({"A", "C", "T", "G"}))):
+                    raise RuntimeError("Format of barcode input file is incorrect. Expected a file with one line of "
+                                       "16-bp barcodes separated by commas.")
+
+        # Log number of barcodes
+        logging.info("Number of cellular barcodes: {0}".format(len(barcode_list)))
+
+        self.set_output("barcode_list", barcode_list)
+
+class SubsetBamByBarcode(Module):
+    def __init__(self, module_id, is_docker=False):
+        super(SubsetBamByBarcode, self).__init__(module_id, is_docker)
+        self.output_keys = ["bam"]
+
+    def define_input(self):
+        self.add_argument("barcode",  is_required=True)
+        self.add_argument("bam",      is_required=True)
+        self.add_argument("samtools", is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",  is_required=True, default_value=2)
+        self.add_argument("mem",      is_required=True, default_value=4)
+
+    def define_output(self):
+        bam_out = self.generate_unique_file_name(extension=".bam")
+        self.add_output("bam", bam_out)
+
+    def define_command(self):
+        # Get arguments
+        barcode    = self.get_argument("barcode")
+        input_bam  = self.get_argument("bam")
+        output_bam = self.get_output("bam")
+        samtools   = self.get_argument("samtools")
+        nr_cpus    = self.get_argument("nr_cpus")
+
+        # Generating the commands that will be piped together
+        cmds = list()
+
+        # View BAM as a SAM so you can read the barcode; include the SAM header with -h
+        cmds.append("{0} view -@ {1} -h {2}".format(samtools, nr_cpus, input_bam))
+
+        # Select only the header and reads with the barcode
+        cmds.append("grep -e '^@' -e 'CB:Z:{0}' -".format(barcode))
+
+        # Convert back to BAM and write to output
+        cmds.append("{0} view -@ {1} -S -b - > {2} !LOG2! ".format(samtools, nr_cpus, output_bam))
+
+        # Pipe everything together
+        cmd = " | ".join(cmds)
+
+        return cmd
+
+class ReplaceGVCFSampleName(Module):
+    def __init__(self, module_id, is_docker=False):
+        super(ReplaceGVCFSampleName, self).__init__(module_id, is_docker)
+        self.output_keys = ["gvcf"]
+
+    def define_input(self):
+        self.add_argument("barcode",      is_required=True)
+        self.add_argument("gvcf",         is_required=True)
+        self.add_argument("sample_name",  is_required=True)
+        self.add_argument("nr_cpus",      is_required=True, default_value=1)
+        self.add_argument("mem",          is_required=True, default_value=1)
+
+    def define_output(self):
+        gvcf = self.generate_unique_file_name(extension=".g.vcf")
+        self.add_output("gvcf", gvcf)
+
+    def define_command(self):
+        sample_name = self.get_argument("sample_name")
+        barcode     = self.get_argument("barcode")
+        gvcf_in     = self.get_argument("gvcf")
+        gvcf_out    = self.get_output("gvcf")
+
+        # The one line with the sample name at the end of the line ($) is the header line #CHROM ... sample_name,
+        # so we replace that sample name with the barcode
+        cmd = 'sed "s/{0}$/{1}/g" {2} > {3}'.format(sample_name, barcode, gvcf_in, gvcf_out)
+
+        return cmd

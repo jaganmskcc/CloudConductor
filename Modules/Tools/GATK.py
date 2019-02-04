@@ -71,12 +71,13 @@ class HaplotypeCaller(_GATKBase):
 
     def define_input(self):
         self.define_base_args()
-        self.add_argument("bam",                is_required=True)
-        self.add_argument("bam_idx",            is_required=True)
-        self.add_argument("BQSR_report",        is_required=False)
-        self.add_argument("use_bqsr",           is_required=True, default_value=True)
-        self.add_argument("nr_cpus",            is_required=True, default_value=8)
-        self.add_argument("mem",                is_required=True, default_value=48)
+        self.add_argument("bam",                    is_required=True)
+        self.add_argument("bam_idx",                is_required=True)
+        self.add_argument("BQSR_report",            is_required=False)
+        self.add_argument("use_bqsr",               is_required=True, default_value=True)
+        self.add_argument("nr_cpus",                is_required=True, default_value=8)
+        self.add_argument("mem",                    is_required=True, default_value=48)
+        self.add_argument("use_soft_clipped_bases", is_required=True, default_value=True)
 
     def define_output(self):
         # Declare GVCF output filename
@@ -89,28 +90,29 @@ class HaplotypeCaller(_GATKBase):
 
     def define_command(self):
         # Get input arguments
-        bam     = self.get_argument("bam")
-        BQSR    = self.get_argument("BQSR_report")
-        ref     = self.get_argument("ref")
-        L       = self.get_argument("location")
-        XL      = self.get_argument("excluded_location")
-        interval = self.get_argument("interval_list")
-        gvcf    = self.get_output("gvcf")
-        gatk_cmd = self.get_gatk_command()
-        gatk_version = self.get_argument("gatk_version")
-        use_bqsr     = self.get_argument("use_bqsr")
-        nr_cpus = self.get_argument("nr_cpus")
+        bam                    = self.get_argument("bam")
+        BQSR                   = self.get_argument("BQSR_report")
+        ref                    = self.get_argument("ref")
+        L                      = self.get_argument("location")
+        XL                     = self.get_argument("excluded_location")
+        interval               = self.get_argument("interval_list")
+        gvcf                   = self.get_output("gvcf")
+        gatk_cmd               = self.get_gatk_command()
+        gatk_version           = self.get_argument("gatk_version")
+        use_bqsr               = self.get_argument("use_bqsr")
+        use_soft_clipped_bases = self.get_argument("use_soft_clipped_bases")
+        nr_cpus                = self.get_argument("nr_cpus")
 
         output_file_flag = self.get_output_file_flag()
 
         # Generating the haplotype caller options
         opts = list()
-        opts.append("-I %s" % bam)
+        opts.append("-I {0}".format(bam))
         opts.append("{0} {1}".format(output_file_flag, gvcf))
-        opts.append("-R %s" % ref)
+        opts.append("-R {0}".format(ref))
         opts.append("-ERC GVCF")
         if BQSR is not None and gatk_version < 4 and use_bqsr:
-            opts.append("-BQSR %s" % BQSR)
+            opts.append("-BQSR {0}".format(BQSR))
 
         # Set the parallelism method
         if gatk_version < 4:
@@ -118,27 +120,31 @@ class HaplotypeCaller(_GATKBase):
         else:
             opts.append("--native-pair-hmm-threads {0}".format(nr_cpus))
 
-        # Limit the locations to be processes
+        # Limit the locations to be processed
         if L is not None:
             if isinstance(L, list):
                 for included in L:
                     if included != "unmapped":
-                        opts.append("-L \"%s\"" % included)
+                        opts.append("-L \"{0}\"".format(included))
             else:
-                opts.append("-L \"%s\"" % L)
+                opts.append("-L \"{0}\"".format(L))
         if XL is not None:
             if isinstance(XL, list):
                 for excluded in XL:
-                    opts.append("-XL \"%s\"" % excluded)
+                    opts.append("-XL \"{0}\"".format(excluded))
             else:
-                opts.append("-XL \"%s\"" % XL)
+                opts.append("-XL \"{0}\"".format(XL))
 
         # Check if an interval list was provided and if yes, place it
         if interval is not None:
             opts.append("-L {0}".format(interval))
 
+        # Add on flag for not using soft clipped bases if defined (used in RNAseq variant calling)
+        if use_soft_clipped_bases == "False":
+            opts.append("--dont-use-soft-clipped-bases")
+
         # Generating command for HaplotypeCaller
-        return "%s HaplotypeCaller %s !LOG3!" % (gatk_cmd, " ".join(opts))
+        return "{0} HaplotypeCaller {1} !LOG3!".format(gatk_cmd, " ".join(opts))
 
 class PrintReads(_GATKBase):
 
@@ -515,3 +521,53 @@ class GenotypeGenomicsDB(_GATKBase):
 
         # Generating command for base recalibration
         return "{0} GenotypeGVCFs {1} !LOG3!".format(gatk_cmd, " ".join(opts))
+
+class SplitNCigarReads(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(SplitNCigarReads, self).__init__(module_id, is_docker)
+        self.output_keys  = ["bam"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("bam",                is_required=True)
+        self.add_argument("bam_idx",            is_required=True)
+        self.add_argument("nr_cpus",            is_required=True, default_value=2)
+        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2.5")
+
+    def define_output(self):
+        # Declare BAM output filename
+        bam = self.generate_unique_file_name(extension=".split.bam")
+        self.add_output("bam", bam)
+
+    def define_command(self):
+        # Get arguments needed to generated a SplitNCigarReads command
+        bam        = self.get_argument("bam")
+        output_bam = self.get_output("bam")
+        ref        = self.get_argument("ref")
+        gatk_version = self.get_argument("gatk_version")
+
+        # Get JVM options and GATK command
+        gatk_cmd = self.get_gatk_command()
+
+        output_file_flag = self.get_output_file_flag()
+
+        # Generating the options for splitting reads with N in cigar string
+        opts = list()
+        opts.append("-R {0}".format(ref))
+        opts.append("-I {0}".format(bam))
+        opts.append("{0} {1}".format(output_file_flag, output_bam))
+
+        # Determine numeric version of GATK to see if GATK3 options should be added
+        gatk_version = str(gatk_version).lower().replace("gatk","")
+        gatk_version = gatk_version.strip()
+        gatk_version = int(gatk_version.split(".")[0])
+
+        if gatk_version < 4:
+            opts.append("-rf ReassignOneMappingQuality")
+            opts.append("-RMQF 255")
+            opts.append("-RMQT 60")
+            opts.append("-U ALLOW_N_CIGAR_READS")
+
+        # Generate command for splitting reads
+        return "{0} SplitNCigarReads {1} !LOG3!".format(gatk_cmd, " ".join(opts))
