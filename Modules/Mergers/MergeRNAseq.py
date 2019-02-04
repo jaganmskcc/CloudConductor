@@ -10,17 +10,23 @@ def generate_sample_sheet_cmd(sample_names, sample_files, outfile, in_type=None)
         sample_names = [sample_names]
         sample_files = [sample_files]
 
+    # Define the output file as a bash variable
+    cmds.append("o={0}".format(outfile))
+
+    # Define the containing directory of the input files
+    cmds.append("i={0}".format(os.path.dirname(sample_files[0])))
+
     #iterate through all the samples to create a sample info file for Rscript
     for index in range(len(sample_names)):
         if index == 0:
-            if in_type is "cuffquant":
-                cmds.append('echo -e "sample_id\\tgroup_label" > {0}'.format(outfile))
+            if in_type == "cuffquant":
+                cmds.append('echo -e "sample_id\\tgroup_label" > $o')
             else:
-                cmds.append('echo -e "samples\\tfiles" > {0}'.format(outfile))
-        if in_type is "cuffquant":
-            cmds.append('echo -e "{0}\\t{1}" >> {2}'.format(sample_files[index], sample_names[index], outfile))
+                cmds.append('echo -e "samples\\tfiles" > $o')
+        if in_type == "cuffquant":
+            cmds.append('echo -e "$i/{0}\\t{1}" >> $o'.format(os.path.basename(sample_files[index]), sample_names[index]))
         else:
-            cmds.append('echo -e "{0}\\t{1}" >> {2}'.format(sample_names[index], sample_files[index], outfile))
+            cmds.append('echo -e "{0}\\t$i/{1}" >> $o'.format(sample_names[index], os.path.basename(sample_files[index])))
     return " ; ".join(cmds)
 
 class AggregateRawReadCounts(Merger):
@@ -146,7 +152,7 @@ class AggregateRSEMResults(Merger):
                  isoform_expression_gene_metadata_file_name, count_type,
                  genes_input_file, gene_expression_file_name, gene_expression_gene_metadata_file_name)
 
-        return "{0} ; {1} ; {2}".format(mk_sample_sheet_cmd1, mk_sample_sheet_cmd2, cmd)
+        return [mk_sample_sheet_cmd1, mk_sample_sheet_cmd2, cmd]
 
 class Cuffnorm(Merger):
     def __init__(self, module_id, is_docker = False):

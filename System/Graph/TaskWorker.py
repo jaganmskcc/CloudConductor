@@ -168,13 +168,41 @@ class TaskWorker(Thread):
                 # Update module's command to reflect changes to input paths
                 self.set_status(self.RUNNING)
                 self.cmd = self.module.update_command()
-                out, err = self.module_executor.run(self.cmd)
 
-                # Check to see if pipeline has been cancelled
-                self.__check_cancelled()
+                # Check if we received a list of commands or only one
+                if isinstance(self.cmd, list):
 
-                # Post-process command output if necessary
-                self.module.process_cmd_output(out, err)
+                    logging.info("Task '{0}' has a list of commands, so we will run them sequentially.".format(
+                        self.task.get_ID()))
+
+                    # Initialize the output and error placeholders
+                    out, err = None, None
+
+                    # Process each command
+                    for cmd_id, cmd in enumerate(self.cmd):
+
+                        # Create a unique job_name
+                        job_name = "{0}_{1}".format(self.task.get_ID(), cmd_id)
+
+                        # Run the actual command
+                        out, err = self.module_executor.run(cmd, job_name=job_name)
+
+                        # Check to see if pipeline has been cancelled
+                        self.__check_cancelled()
+
+                    # Post-process only last command output if necessary
+                    self.module.process_cmd_output(out, err)
+
+                else:
+
+                    # Run the actual command
+                    out, err = self.module_executor.run(self.cmd)
+
+                    # Check to see if pipeline has been cancelled
+                    self.__check_cancelled()
+
+                    # Post-process command output if necessary
+                    self.module.process_cmd_output(out, err)
 
             # Set the status to finalized
             self.set_status(self.FINALIZING)
