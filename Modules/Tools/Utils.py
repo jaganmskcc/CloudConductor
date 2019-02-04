@@ -371,7 +371,7 @@ class CombineExpressionWithMetadata(Module):
         self.add_argument("combine_script",     is_required=True, is_resource=True)
         self.add_argument("result_type",        is_required=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=4)
-        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2")
+        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 5")
 
     def define_output(self):
 
