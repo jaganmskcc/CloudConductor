@@ -38,12 +38,12 @@ class Trimmomatic (Module):
         r1_trimmed_out  = self.generate_unique_file_name(extension=".R1.trimmed.fastq")
         self.add_output("R1", r1_trimmed_out)
 
-        # Declare discarded R1 output filename
-        r1_unpair_out  = self.generate_unique_file_name(extension=".R1.unpair.fastq")
-        self.add_output("R1_unpair", r1_unpair_out)
-
         # Conditionally R2 output filenames
         if self.get_argument("R2") is not None:
+            # Declare unpaired R1 output filename
+            r1_unpair_out = self.generate_unique_file_name(extension=".R1.unpair.fastq")
+            self.add_output("R1_unpair", r1_unpair_out)
+
             # Declare trimmed R2 output filename
             r2_trimmed_out = self.generate_unique_file_name(extension=".R2.trimmed.fastq")
             self.add_output("R2", r2_trimmed_out)
@@ -70,7 +70,6 @@ class Trimmomatic (Module):
 
         # Get output filenames
         R1_out          = self.get_output("R1")
-        R1_unpair_out   = self.get_output("R1_unpair")
         trim_report     = self.get_output("trim_report")
 
         # Throw error if Phred is not Phred33 or Phred64
@@ -112,6 +111,7 @@ class Trimmomatic (Module):
 
         if R2 is not None:
             # Generate command for paired-end trimmomatic
+            R1_unpair_out = self.get_output("R1_unpair")
             R2_out          = self.get_output("R2")
             R2_unpair_out   = self.get_output("R2_unpair")
 
