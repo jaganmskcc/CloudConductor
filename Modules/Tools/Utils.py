@@ -32,12 +32,12 @@ class ConcatFastq(Module):
             extension = ".R1.fastq.gz" if r1[0].endswith(".gz") else "concat.R1.fastq"
             self.add_output("R1", self.generate_unique_file_name(extension=extension))
 
-        # Declare R2 output name
+        # Conditionally declare R2 output name
         r2 = self.get_argument("R2")
         if not isinstance(r2, list):
             # Either R2 is single path or R2 is None
             r2_copy = copy.deepcopy(self.arguments["R2"].get_value())
-            self.add_output("R2", r2_copy)
+            self.add_output("R2", r2_copy, is_path=(r2_copy is not None))
         else:
             extension = ".R2.fastq.gz" if r2[0].endswith(".gz") else "concat.R2.fastq"
             self.add_output("R2", self.generate_unique_file_name(extension=extension))
@@ -49,19 +49,20 @@ class ConcatFastq(Module):
         r1_out  = self.get_output("R1")
         r2_out  = self.get_output("R2")
 
-        # Check to make sure r1 and r2 contain same number of files
-        self.__check_input(r1, r2)
-
         cmd = None
         if r1 != r1_out.get_path():
-            # Concat R1 if necessary
+            # Concat R1 if a list of FASTQs was given as input
             cmd = "cat %s > %s !LOG2!" % (" ".join(r1), r1_out)
 
-        if r2 != r2_out.get_path():
-            # Concat R2 if necessary
-            r2_cmd = "cat %s > %s !LOG2!" % (" ".join(r2), r2_out)
-            # Join in the background so they run at the same time
-            cmd = "%s & %s ; wait" % (cmd, r2_cmd)
+        if r2 is not None:
+            # Check to make sure r1 and r2 contain same number of files
+            self.__check_input(r1, r2)
+
+            if r2 != r2_out.get_path():
+                # Concat R2 if a list of FASTQs was given as input
+                r2_cmd = "cat %s > %s !LOG2!" % (" ".join(r2), r2_out)
+                # Join in the background so they run at the same time
+                cmd = "%s & %s ; wait" % (cmd, r2_cmd)
 
         return cmd
 
@@ -505,6 +506,7 @@ class GetCellBarcodes(Module):
 
         self.set_output("barcode_list", barcode_list)
 
+
 class SubsetBamByBarcode(Module):
     def __init__(self, module_id, is_docker=False):
         super(SubsetBamByBarcode, self).__init__(module_id, is_docker)
@@ -546,6 +548,7 @@ class SubsetBamByBarcode(Module):
         cmd = " | ".join(cmds)
 
         return cmd
+
 
 class ReplaceGVCFSampleName(Module):
     def __init__(self, module_id, is_docker=False):
