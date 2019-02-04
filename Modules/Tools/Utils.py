@@ -514,8 +514,8 @@ class SubsetBamByBarcode(Module):
         self.add_argument("barcode",  is_required=True)
         self.add_argument("bam",      is_required=True)
         self.add_argument("samtools", is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",  is_required=True, default_value=1)
-        self.add_argument("mem",      is_required=True, default_value=1)
+        self.add_argument("nr_cpus",  is_required=True, default_value=2)
+        self.add_argument("mem",      is_required=True, default_value=4)
 
     def define_output(self):
         bam_out = self.generate_unique_file_name(extension=".bam")
@@ -527,18 +527,19 @@ class SubsetBamByBarcode(Module):
         input_bam  = self.get_argument("bam")
         output_bam = self.get_output("bam")
         samtools   = self.get_argument("samtools")
+        nr_cpus    = self.get_argument("nr_cpus")
 
         # Generating the commands that will be piped together
         cmds = list()
 
         # View BAM as a SAM so you can read the barcode; include the SAM header with -h
-        cmds.append("{0} view -h {1}".format(samtools, input_bam))
+        cmds.append("{0} view -@ {1} -h {2}".format(samtools, nr_cpus, input_bam))
 
         # Select only the header and reads with the barcode
         cmds.append("grep -e '^@' -e 'CB:Z:{0}' -".format(barcode))
 
         # Convert back to BAM and write to output
-        cmds.append("{0} view -S -b - > {1} !LOG2! ".format(samtools, output_bam))
+        cmds.append("{0} view -@ {1} -S -b - > {2} !LOG2! ".format(samtools, nr_cpus, output_bam))
 
         # Pipe everything together
         cmd = " | ".join(cmds)
