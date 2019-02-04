@@ -24,4 +24,4 @@ class CellBarcodeSplitter(Splitter):
 
     def define_command(self):
         # The point of this module is to split the Cloud Conductor graph, not to perform a command, so we do nothing
-        return "sleep 10 !LOG3!"
+        return None

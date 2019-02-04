@@ -565,8 +565,8 @@ class SplitNCigarReads(_GATKBase):
 
         if gatk_version < 4:
             opts.append("-rf ReassignOneMappingQuality")
-            opts.append("- RMQF 255")
-            opts.append("- RMQT 60")
+            opts.append("-RMQF 255")
+            opts.append("-RMQT 60")
             opts.append("-U ALLOW_N_CIGAR_READS")
 
         # Generate command for splitting reads
