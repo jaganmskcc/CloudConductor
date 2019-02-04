@@ -1,4 +1,3 @@
-import os
 from Modules import Module
 
 class RSEM(Module):
@@ -37,7 +36,7 @@ class RSEM(Module):
         # Generate output file name prefix for RSEM
         output_file_name_prefix = output_file_path.split(".")[0]
 
-        #generate command line for RSEM according to input read type
+        # Generate command line for RSEM according to input read type
         if paired_end:
             cmd = "{0} --time --bam --no-bam-output -p {1} --paired-end {2} {3} {4} !LOG3!".format(rsem, nr_cpus, bam,
                                                                                                    rsem_ref,output_file_name_prefix)
