@@ -88,8 +88,9 @@ class PreemptibleInstance(Instance):
         cmd_names_to_run = list()
         while len(self.processes):
             process_tuple = self.processes.popitem(last=False)
-            commands_to_run.append((process_tuple[0], process_tuple[1]))
-            cmd_names_to_run.append(process_tuple[0]) # only want the names in this list for logging purposes
+            if not process_tuple[1].complete or process_tuple[1].has_failed(): # only want to rerun processes that haven't been completed
+                commands_to_run.append((process_tuple[0], process_tuple[1]))
+                cmd_names_to_run.append(process_tuple[0]) # only want the names in this list for logging purposes
         logging.debug("Commands to be rerun: (%s) " % str(cmd_names_to_run))
         
         if not self.is_preemptible: # Recreating the instance as standard instance
