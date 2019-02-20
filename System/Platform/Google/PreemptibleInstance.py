@@ -44,16 +44,39 @@ class PreemptibleInstance(Instance):
         prev_price = self.price
         prev_start = self.start_time
 
-        # Destroying the instance
-        self.destroy()
+        if self.is_preemptible: # still want to use a preemptible image, so, we don't have to recreate
+            # Set status to indicate that instance cannot run commands and is destroying
+            logging.info("(%s) Process 'start' started!" % self.name)
+            cmd = self.__get_gcloud_start_cmd()
+            # Run command, wait for start to complete
+            self.processes["start"] = Process(cmd,
+                                                cmd=cmd,
+                                                stdout=sp.PIPE,
+                                                stderr=sp.PIPE,
+                                                shell=True,
+                                                num_retries=self.default_num_cmd_retries)
+
+            # Wait for start to complete if requested
+            self.wait_process("start")
+
+            # Wait for startup script to completely finish
+            logging.debug("(%s) Waiting for instance to finish starting up..." % self.name)
+            self.startup_script_complete = False
+            self.wait_until_ready()
+            logging.debug("(%s) Instance restarted, continue running processes..." % self.name)
+        else:
+            logging.debug("(%s) Destroying old instance to create new standard instance..." % self.name)
+            # Destroying the instance
+            self.destroy()
 
         # Add record to cost history of last run
         logging.debug("({0}) Appending to cost history: {1}, {2}, {3}".format(self.name, prev_price, prev_start, self.stop_time))
         self.cost_history.append((prev_price, prev_start, self.stop_time))
 
-        # Removing old process(es)
+        # Removing old process(es) that shouldn't be rerun after a restart
         self.processes.pop("create", None)
         self.processes.pop("destroy", None)
+        self.processes.pop("start", None)
 
         # Remove commands that get run during configure_instance()
         for proc in ["configCRCMOD", "install_packages", "configureSSH", "restartSSH"]:
@@ -62,12 +85,15 @@ class PreemptibleInstance(Instance):
 
         # Identifying which process(es) need to be recalled
         commands_to_run = list()
+        cmd_names_to_run = list()
         while len(self.processes):
             process_tuple = self.processes.popitem(last=False)
             commands_to_run.append((process_tuple[0], process_tuple[1]))
-
-        # Recreating the instance
-        self.create()
+            cmd_names_to_run.append(process_tuple[0]) # only want the names in this list for logging purposes
+        logging.debug("Commands to be rerun: (%s) " % str(cmd_names_to_run))
+        
+        if not self.is_preemptible: # Recreating the instance as standard instance
+            self.create()
 
         # Rerunning all the commands
         if len(commands_to_run):
@@ -256,3 +282,14 @@ class PreemptibleInstance(Instance):
                 raise RuntimeError("(%s) Instance successfully created but never"
                                    " became available after %s resets!" %
                                    self.name, self.default_num_cmd_retries)
+
+    def __get_gcloud_start_cmd(self):
+        # Create base command
+        args = list()
+        args.append("gcloud compute instances start %s" % self.name)
+
+        # Specify the zone where instance will exist
+        args.append("--zone")
+        args.append(self.zone)
+
+        return " ".join(args)

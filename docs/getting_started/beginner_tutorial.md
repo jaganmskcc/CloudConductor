@@ -13,7 +13,7 @@ helps you to set up your system for **CloudConductor**.
 
 ## Running **CloudConductor**
 
-The **CloudConductor** reuires four types of configuration files as follows:
+The **CloudConductor** requires four types of configuration files as follows:
   * [Workflow config](#prepare-workflow-config)
   * [Resource Kit config](#prepare-resource-kit-config)
   * [Platform config](#prepare-platform-config)
