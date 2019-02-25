@@ -12,7 +12,7 @@ class DemuxTNA (Module):
         self.add_argument("R1",             is_required=True)
         self.add_argument("R2",             is_required=True)
         self.add_argument("assay_to_keep",  is_required=True)
-        self.add_argument("barcodes",        is_required=True, default_value=["AGTCGACATG,TCGACATG"])
+        self.add_argument("barcodes",       is_required=True)
         self.add_argument("nr_cpus",        is_required=True, default_value=2)
         self.add_argument("mem",            is_required=True, default_value=8)
 
