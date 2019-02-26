@@ -251,12 +251,16 @@ class TaskWorker(Thread):
 
         # Try to destroy platform if it's not off
         try:
+
             # Destroy processor if it hasn't already been destroyed
             if not "destroy" in self.proc.processes:
                 self.proc.destroy(wait=False)
+
             # Wait until processor is destroyed
-            self.platform.deallocate_resources(self.proc)
             self.proc.wait_process("destroy")
+
+            # Deallocate
+            self.platform.deallocate_resources(self.proc)
         except BaseException, e:
             logging.error("Unable to destroy processor '%s' for task '%s'" % (self.proc.get_name(), self.task.get_ID()))
             if e.message != "":
