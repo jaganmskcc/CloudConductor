@@ -419,6 +419,18 @@ class GoogleCloudHelper:
         return out_files
 
     @staticmethod
+    def get_external_ip(name, zone):
+        cmd = "gcloud compute instances list --format=\"csv(NAME,EXTERNAL_IP)\" " \
+              "--filter=\"name=({0})\" --zones={1}".format(name, zone)
+
+        out = GoogleCloudHelper.run_cmd(cmd, err_msg="Unable to get external IP address for '%s'!" % name)
+
+        # Skip header and get second line that contains the information. Then split by comma
+        _, external_ip = out.strip("\n").split("\n")[1].split(",")
+
+        return external_ip
+
+    @staticmethod
     def describe(ins_name, zone):
         cmd = 'gcloud compute instances describe %s --format json --zone %s' % (ins_name, zone)
         out = GoogleCloudHelper.run_cmd(cmd, err_msg="Unable to describe instance '%s'!" % ins_name)
