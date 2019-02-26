@@ -16,6 +16,8 @@ class TaskWorker(Thread):
     CANCELLING      = 5
     FINALIZED       = 6
 
+    STATUSES        = ["IDLE", "LOADING", "RUNNING", "FINALIZING", "COMPLETE", "CANCELLING", "FINALIZED"]
+
     def __init__(self, task, datastore, platform):
         # Class for executing task
 
@@ -56,14 +58,16 @@ class TaskWorker(Thread):
         self.cmd = None
 
     def set_status(self, new_status):
+
         # Updates instance status with threading.lock() to prevent race conditions
         with self.status_lock:
+            logging.debug("({0}) TaskWorker change of status to {1}!".format(self.task.get_ID(),
+                                                                             self.STATUSES[self.status]))
             self.status = new_status
 
     def get_status(self):
         # Returns instance status with threading.lock() to prevent race conditions
         with self.status_lock:
-            logging.debug("(%s) TaskWorker status: %s" % (self.task.get_ID(), self.status))
             return self.status
 
     def get_task(self):
