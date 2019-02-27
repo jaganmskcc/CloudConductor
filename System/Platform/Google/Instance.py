@@ -48,6 +48,9 @@ class Instance(Processor):
         # API Rate limit errors count
         self.api_rate_limit_retries = 0
 
+        # Initialize extenal IP
+        self.external_IP = None
+
     def get_status(self):
         with self.status_lock:
             self.status = self.__sync_status()
@@ -57,7 +60,11 @@ class Instance(Processor):
     def adapt_cmd(self, cmd):
         # Adapt command for running on instance through gcloud ssh
         cmd = cmd.replace("'", "'\"'\"'")
-        cmd = "gcloud compute ssh gap@%s --command '%s' --zone %s" % (self.name, cmd, self.zone)
+
+         # Get external IP address
+        ext_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
+
+        cmd = "ssh -i ~/.ssh/google_compute_engine -o CheckHostIP=no -o StrictHostKeyChecking=no gap@{0} -- '{1}'".format(ext_IP, cmd)
         return cmd
 
     def create(self):

@@ -37,6 +37,9 @@ class GooglePlatform(Platform):
         # Use authentication key file to gain access to google cloud project using Oauth2 authentication
         GoogleCloudHelper.authenticate(self.key_file)
 
+        # Create local gcloud SSH key to be able to directly use SSH
+        GoogleCloudHelper.configure_gcloud_ssh()
+
     def validate(self):
         # Check that final output dir begins with gs://
         if not self.final_output_dir.startswith("gs://"):
