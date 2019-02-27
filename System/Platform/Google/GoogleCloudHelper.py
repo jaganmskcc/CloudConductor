@@ -190,6 +190,19 @@ class GoogleCloudHelper:
         logging.info("Authentication to Google Cloud was successful.")
 
     @staticmethod
+    def configure_gcloud_ssh():
+
+        # Check if the default gcloud ssh key is already present
+        home_dir = os.path.expanduser("~")
+        if os.path.exists("{0}/.ssh/google_compute_engine".format(home_dir)):
+            return
+
+        # Otherwise, create a new SSH key
+        logging.info("Configuring SSH key for connecting to other Google instances.")
+        cmd = "gcloud compute config-ssh"
+        GoogleCloudHelper.run_cmd(cmd, "Could not create an Gcloud SSH key")
+
+    @staticmethod
     def get_disk_image_info(disk_image_name):
         # Returns information about a disk image for a project. Returns none if no image exists with the name.
         cmd = "gcloud compute images list --format=json"
