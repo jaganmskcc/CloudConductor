@@ -68,7 +68,7 @@ class HaplotypeCaller(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
         super(HaplotypeCaller, self).__init__(module_id, is_docker)
-        self.output_keys = ["gvcf", "gvcf_idx"]
+        self.output_keys = ["gvcf", "gvcf_idx", "vcf", "vcf_idx"]
 
     def define_input(self):
         self.define_base_args()
@@ -76,6 +76,7 @@ class HaplotypeCaller(_GATKBase):
         self.add_argument("bam_idx",                is_required=True)
         self.add_argument("BQSR_report",            is_required=False)
         self.add_argument("use_bqsr",               is_required=True, default_value=True)
+        self.add_argument("output_gvcf",            is_required=True, default_value=True)
         self.add_argument("nr_cpus",                is_required=True, default_value=8)
         self.add_argument("mem",                    is_required=True, default_value=48)
         self.add_argument("use_soft_clipped_bases", is_required=True, default_value=True)
@@ -83,21 +84,29 @@ class HaplotypeCaller(_GATKBase):
     def define_output(self):
         # Declare GVCF output filename
         randomer = Platform.generate_unique_id()
-        gvcf = self.generate_unique_file_name(extension="{0}.g.vcf".format(randomer))
-        self.add_output("gvcf", gvcf)
-        # Declare GVCF index output filename
-        gvcf_idx = self.generate_unique_file_name(extension="{0}.g.vcf.idx".format(randomer))
-        self.add_output("gvcf_idx", gvcf_idx)
+        # generate uniques file name based on the output mode set for the Haplotypecaller
+        if self.get_argument("output_gvcf"):
+            gvcf = self.generate_unique_file_name(extension="{0}.g.vcf".format(randomer))
+            self.add_output("gvcf", gvcf)
+            # Declare GVCF index output filename
+            gvcf_idx = self.generate_unique_file_name(extension="{0}.g.vcf.idx".format(randomer))
+            self.add_output("gvcf_idx", gvcf_idx)
+        else:
+            vcf = self.generate_unique_file_name(extension="{0}.vcf".format(randomer))
+            self.add_output("vcf", vcf)
+            # Declare VCF index output filename
+            vcf_idx = self.generate_unique_file_name(extension="{0}.vcf.idx".format(randomer))
+            self.add_output("vcf_idx", vcf_idx)
 
     def define_command(self):
         # Get input arguments
         bam                    = self.get_argument("bam")
         BQSR                   = self.get_argument("BQSR_report")
+        output_gvcf            = self.get_argument("output_gvcf")
         ref                    = self.get_argument("ref")
         L                      = self.get_argument("location")
         XL                     = self.get_argument("excluded_location")
         interval               = self.get_argument("interval_list")
-        gvcf                   = self.get_output("gvcf")
         bed                    = self.get_argument("bed")
 
         gatk_cmd               = self.get_gatk_command()
@@ -111,9 +120,19 @@ class HaplotypeCaller(_GATKBase):
         # Generating the haplotype caller options
         opts = list()
         opts.append("-I {0}".format(bam))
-        opts.append("{0} {1}".format(output_file_flag, gvcf))
         opts.append("-R {0}".format(ref))
-        opts.append("-ERC GVCF")
+
+        # Setting the output file based on the output mode
+        if output_gvcf:
+            opts.append("{0} {1}".format(output_file_flag, self.get_output("gvcf")))
+        else:
+            opts.append("{0} {1}".format(output_file_flag, self.get_output("vcf")))
+
+        # Setting the output mode
+        if output_gvcf:
+            opts.append("-ERC GVCF")
+
+        # Adding the BQSR for lower version of the GATK
         if BQSR is not None and gatk_version < 4 and use_bqsr:
             opts.append("-BQSR {0}".format(BQSR))
 
