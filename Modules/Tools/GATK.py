@@ -23,7 +23,8 @@ class _GATKBase(Module):
         # Set chromosome interval specific arguments
         self.add_argument("location")
         self.add_argument("excluded_location")
-        self.add_argument("interval_list")
+        self.add_argument("interval_list", is_resource=True)
+        self.add_argument("bed", is_resource=True)
 
     def get_gatk_command(self):
         # Get input arguments
@@ -97,6 +98,8 @@ class HaplotypeCaller(_GATKBase):
         XL                     = self.get_argument("excluded_location")
         interval               = self.get_argument("interval_list")
         gvcf                   = self.get_output("gvcf")
+        bed                    = self.get_argument("bed")
+
         gatk_cmd               = self.get_gatk_command()
         gatk_version           = self.get_argument("gatk_version")
         use_bqsr               = self.get_argument("use_bqsr")
@@ -138,6 +141,10 @@ class HaplotypeCaller(_GATKBase):
         # Check if an interval list was provided and if yes, place it
         if interval is not None:
             opts.append("-L {0}".format(interval))
+
+        # Check if a BED file was provided and if yes, place it
+        if bed is not None:
+            opts.append("-L {0}".format(bed))
 
         # Add on flag for not using soft clipped bases if defined (used in RNAseq variant calling)
         if use_soft_clipped_bases == "False":
