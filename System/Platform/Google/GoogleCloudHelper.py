@@ -14,7 +14,11 @@ class GoogleCloudHelperError(Exception):
     pass
 
 
-class GoogleCloudHelper:
+class GoogleResourceNotFound(Exception):
+    pass
+
+
+class GoogleCloudHelper(object):
 
     prices = None
     machine_types = None
@@ -29,6 +33,11 @@ class GoogleCloudHelper:
 
         # Check if any error has appeared
         if len(err) != 0 and "error" in err.lower():
+
+            # Check if the error is a "not found error"
+            if "was not found" in err.lower():
+                raise GoogleResourceNotFound("Resource not found!")
+
             # Retry command if possible
             if num_retries > 0:
                 # Sleep for 5-10 minutes before retrying if error due to api rate limit
