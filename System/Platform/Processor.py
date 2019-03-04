@@ -32,7 +32,8 @@ class Processor(object):
         self.log_dir    = kwargs.pop("log_dir", None)
 
         # Get name of working directory
-        self.wrk_dir    = kwargs.pop("wrk_dir", "/data/")
+        self.wrk_dir        = kwargs.pop("wrk_dir", "/data/")
+        self.wrk_out_dir    = kwargs.pop("wrk_out_dir", "/data/output")
 
         # Per hour price of processor
         self.price      = kwargs.pop("price",   0)
@@ -50,6 +51,7 @@ class Processor(object):
         # Lock for preventing further commands from being run on processor
         self.locked = False
         self.stopped = False
+        self.checkpoints = []
 
     def create(self):
         self.set_status(Processor.AVAILABLE)
@@ -164,6 +166,9 @@ class Processor(object):
     def set_wrk_dir(self, new_wrk_dir):
         self.wrk_dir = new_wrk_dir
 
+    def set_wrk_out_dir(self, new_wrk_out_dir):
+        self.wrk_out_dir = new_wrk_out_dir
+
     def set_start_time(self):
         if self.start_time is None:
             self.start_time = time.time()
@@ -202,6 +207,13 @@ class Processor(object):
         # Compute running cost of current task processor
         runtime = self.get_runtime()
         return self.price * runtime / 3600
+    
+    def add_checkpoint(self, clear_output=True):
+        """ Function for setting where processor should fall back to in case of a preemption. 
+            -clear_output: Flag to indicate that, in case of preemption, the task's output directory needs to be cleared.
+        """
+        self.checkpoints.append((next(reversed(self.processes)), clear_output))
+
 
     ############ Abstract methods
     @abc.abstractmethod

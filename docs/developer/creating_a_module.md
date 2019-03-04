@@ -115,7 +115,7 @@ Example command with placeholders: *"tool1 !LOG2! | tool2 !LOG2! | tool3 !LOG3!"
 
 There are only two differences between the way splitters and tools are created.
 
-First different is that to create a splitter you will need to extend the `Modules/Splitter` abstract class instead of `Modules/Module`. 
+First difference is that to create a splitter you will need to extend the `Modules/Splitter` abstract class instead of `Modules/Module`. 
 
 Second difference is that the output of a tool is a list of output keys associated with values, while the output of a splitter
 if a list of splits, each split having a list of output_keys associated with values. Consequently, every output key has an additional
@@ -136,5 +136,5 @@ For example:
 
 ## Merger
 
-There is only one difference between the way mergers and tools are created. The difference if that you will need to extend
+There is only one difference between the way mergers and tools are created. The difference being, you will need to extend
 the `Module/Merger` abstract class instead of `Modules/Module`. Other than that, the whole logic is similar.

@@ -85,13 +85,42 @@ class PreemptibleInstance(Instance):
 
         # Identifying which process(es) need to be recalled
         commands_to_run = list()
-        cmd_names_to_run = list()
+        checkpoint_queue = list()
+        add_to_checkpoint_queue = False
+        fail_to_checkpoint = False
+        checkpoint_commands = [i[0] for i in self.checkpoints] # create array of just the commands
+        logging.debug("CHECKPOINT COMMANDS: %s" % str(checkpoint_commands))
+        cleanup_output = False
         while len(self.processes):
             process_tuple = self.processes.popitem(last=False)
-            if not process_tuple[1].complete or process_tuple[1].has_failed(): # only want to rerun processes that haven't been completed
+            if add_to_checkpoint_queue: # adding to the checkpoint queue since we're past a checkpoint marker
+                checkpoint_queue.append((process_tuple[0], process_tuple[1]))
+                if process_tuple[1].has_failed() or not process_tuple[1].complete:
+                    # if a process hasn't been completed, a process may have failed before the checkpoint so we need to add all those to the list to be run
+                    fail_to_checkpoint = True                
+            elif not process_tuple[1].complete or process_tuple[1].has_failed(): # only want to rerun processes that haven't been completed
                 commands_to_run.append((process_tuple[0], process_tuple[1]))
-                cmd_names_to_run.append(process_tuple[0]) # only want the names in this list for logging purposes
-        logging.debug("Commands to be rerun: (%s) " % str(cmd_names_to_run))
+            if process_tuple[0] in checkpoint_commands: # hit a checkpoint marker, start adding to the checkpoint_queue after this process
+                if fail_to_checkpoint:
+                    if cleanup_output:
+                        logging.debug("CLEARING OUTPUT for checkpoint cleanup, clearing %s" % (self.wrk_out_dir) )
+                        cmd = "rm -rf %s*" % self.wrk_out_dir
+                        self.run("cleanup_work_output", cmd)
+                        self.wait_process("cleanup_work_output") # wait for the cleanup
+                    commands_to_run.extend(checkpoint_queue) # add all the commands in the checkpoint queue to commands to run
+                cleanup_output = [d[1] for d in self.checkpoints if d[0] == process_tuple[0]][0]
+                logging.debug("CLEAR OUTPUT IS: %s FOR process %s" % (str(cleanup_output), str(process_tuple[0])))
+                checkpoint_queue = list() # clear the list if we run into a new checkpoint command
+                add_to_checkpoint_queue = True
+        if len(checkpoint_queue) > 0: # still have processes in the checkpoint queue
+            if fail_to_checkpoint:
+                if cleanup_output:
+                    logging.debug("CLEARING OUTPUT for checkpoint cleanup, clearing %s" % (self.wrk_out_dir) )
+                    cmd = "rm -rf %s*" % self.wrk_out_dir
+                    self.run("cleanup_work_output", cmd)
+                    self.wait_process("cleanup_work_output") # wait for the cleanup
+                commands_to_run.extend(checkpoint_queue) # add all the commands in the checkpoint queue to commands to run
+        logging.debug("Commands to be rerun: (%s) " % str([i[0] for i in commands_to_run])) # log names of commands
         
         if not self.is_preemptible: # Recreating the instance as standard instance
             self.create()
