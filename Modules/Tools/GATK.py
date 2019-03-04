@@ -76,7 +76,7 @@ class HaplotypeCaller(_GATKBase):
         self.add_argument("bam_idx",                is_required=True)
         self.add_argument("BQSR_report",            is_required=False)
         self.add_argument("use_bqsr",               is_required=True, default_value=True)
-        self.add_argument("output_gvcf",            is_required=True, default_value=True)
+        self.add_argument("output_type",            is_required=True, default_value="gvcf")
         self.add_argument("nr_cpus",                is_required=True, default_value=8)
         self.add_argument("mem",                    is_required=True, default_value=48)
         self.add_argument("use_soft_clipped_bases", is_required=True, default_value=True)
@@ -85,7 +85,7 @@ class HaplotypeCaller(_GATKBase):
         # Declare GVCF output filename
         randomer = Platform.generate_unique_id()
         # generate uniques file name based on the output mode set for the Haplotypecaller
-        if self.get_argument("output_gvcf"):
+        if self.get_argument("output_type") == "gvcf":
             gvcf = self.generate_unique_file_name(extension="{0}.g.vcf".format(randomer))
             self.add_output("gvcf", gvcf)
             # Declare GVCF index output filename
@@ -102,7 +102,7 @@ class HaplotypeCaller(_GATKBase):
         # Get input arguments
         bam                    = self.get_argument("bam")
         BQSR                   = self.get_argument("BQSR_report")
-        output_gvcf            = self.get_argument("output_gvcf")
+        output_type            = self.get_argument("output_type")
         ref                    = self.get_argument("ref")
         L                      = self.get_argument("location")
         XL                     = self.get_argument("excluded_location")
@@ -123,13 +123,13 @@ class HaplotypeCaller(_GATKBase):
         opts.append("-R {0}".format(ref))
 
         # Setting the output file based on the output mode
-        if output_gvcf:
+        if output_type == "gvcf":
             opts.append("{0} {1}".format(output_file_flag, self.get_output("gvcf")))
         else:
             opts.append("{0} {1}".format(output_file_flag, self.get_output("vcf")))
 
         # Setting the output mode
-        if output_gvcf:
+        if output_type == "gvcf":
             opts.append("-ERC GVCF")
 
         # Adding the BQSR for lower version of the GATK
