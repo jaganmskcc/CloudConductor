@@ -391,7 +391,7 @@ class Instance(Processor):
         args = list()
         args.append("gcloud compute instances create %s" % self.name)
 
-        # Specify the zone where instance will exits
+        # Specify the zone where instance will exist
         args.append("--zone")
         args.append(self.zone)
 

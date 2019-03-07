@@ -88,11 +88,11 @@ class Platform(object):
         logging.debug("(%s) Checking to see if processor is too big for platform..." % task_id)
         processor   = self.init_task_processor(name, nr_cpus, mem, disk_space)
         proc_name   = processor.get_name()
-        logging.debug("(%s) Platform sucessfully initialized processor for task!" % task_id)
+        logging.debug("(%s) Platform successfully initialized processor for task!" % task_id)
 
         # Add to list of processors if not already there
         with self.platform_lock:
-            logging.debug("(%s) We starting to put that processor in the spot..." % task_id)
+            logging.debug("(%s) We are starting to put that processor in the spot..." % task_id)
             if proc_name not in self.processors:
                 self.processors[proc_name]    = processor
                 self.cpu += processor.get_nr_cpus()

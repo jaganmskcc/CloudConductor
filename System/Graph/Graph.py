@@ -28,7 +28,7 @@ class Graph(object):
             logging.error("Graph Error: Attempt to add duplicate task to graph: %s" % task.get_ID())
             raise RuntimeError("Cannot add task with duplicate ID to graph!")
 
-        # Add new new to nodelist
+        # Add new node to nodelist
         self.tasks[task.get_ID()] = task
         self.adj_list[task.get_ID()] = []
 

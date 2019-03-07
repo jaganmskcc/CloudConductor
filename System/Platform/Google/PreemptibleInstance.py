@@ -44,16 +44,39 @@ class PreemptibleInstance(Instance):
         prev_price = self.price
         prev_start = self.start_time
 
-        # Destroying the instance
-        self.destroy()
+        if self.is_preemptible: # still want to use a preemptible image, so, we don't have to recreate
+            # Set status to indicate that instance cannot run commands and is destroying
+            logging.info("(%s) Process 'start' started!" % self.name)
+            cmd = self.__get_gcloud_start_cmd()
+            # Run command, wait for start to complete
+            self.processes["start"] = Process(cmd,
+                                                cmd=cmd,
+                                                stdout=sp.PIPE,
+                                                stderr=sp.PIPE,
+                                                shell=True,
+                                                num_retries=self.default_num_cmd_retries)
+
+            # Wait for start to complete if requested
+            self.wait_process("start")
+
+            # Wait for startup script to completely finish
+            logging.debug("(%s) Waiting for instance to finish starting up..." % self.name)
+            self.startup_script_complete = False
+            self.wait_until_ready()
+            logging.debug("(%s) Instance restarted, continue running processes..." % self.name)
+        else:
+            logging.debug("(%s) Destroying old instance to create new standard instance..." % self.name)
+            # Destroying the instance
+            self.destroy()
 
         # Add record to cost history of last run
         logging.debug("({0}) Appending to cost history: {1}, {2}, {3}".format(self.name, prev_price, prev_start, self.stop_time))
         self.cost_history.append((prev_price, prev_start, self.stop_time))
 
-        # Removing old process(es)
+        # Removing old process(es) that shouldn't be rerun after a restart
         self.processes.pop("create", None)
         self.processes.pop("destroy", None)
+        self.processes.pop("start", None)
 
         # Remove commands that get run during configure_instance()
         for proc in ["configCRCMOD", "install_packages", "configureSSH", "restartSSH"]:
@@ -62,12 +85,45 @@ class PreemptibleInstance(Instance):
 
         # Identifying which process(es) need to be recalled
         commands_to_run = list()
+        checkpoint_queue = list()
+        add_to_checkpoint_queue = False
+        fail_to_checkpoint = False
+        checkpoint_commands = [i[0] for i in self.checkpoints] # create array of just the commands
+        logging.debug("CHECKPOINT COMMANDS: %s" % str(checkpoint_commands))
+        cleanup_output = False
         while len(self.processes):
             process_tuple = self.processes.popitem(last=False)
-            commands_to_run.append((process_tuple[0], process_tuple[1]))
-
-        # Recreating the instance
-        self.create()
+            if add_to_checkpoint_queue: # adding to the checkpoint queue since we're past a checkpoint marker
+                checkpoint_queue.append((process_tuple[0], process_tuple[1]))
+                if process_tuple[1].has_failed() or not process_tuple[1].complete:
+                    # if a process hasn't been completed, a process may have failed before the checkpoint so we need to add all those to the list to be run
+                    fail_to_checkpoint = True                
+            elif not process_tuple[1].complete or process_tuple[1].has_failed(): # only want to rerun processes that haven't been completed
+                commands_to_run.append((process_tuple[0], process_tuple[1]))
+            if process_tuple[0] in checkpoint_commands: # hit a checkpoint marker, start adding to the checkpoint_queue after this process
+                if fail_to_checkpoint:
+                    if cleanup_output:
+                        logging.debug("CLEARING OUTPUT for checkpoint cleanup, clearing %s" % (self.wrk_out_dir) )
+                        cmd = "rm -rf %s*" % self.wrk_out_dir
+                        self.run("cleanup_work_output", cmd)
+                        self.wait_process("cleanup_work_output") # wait for the cleanup
+                    commands_to_run.extend(checkpoint_queue) # add all the commands in the checkpoint queue to commands to run
+                cleanup_output = [d[1] for d in self.checkpoints if d[0] == process_tuple[0]][0]
+                logging.debug("CLEAR OUTPUT IS: %s FOR process %s" % (str(cleanup_output), str(process_tuple[0])))
+                checkpoint_queue = list() # clear the list if we run into a new checkpoint command
+                add_to_checkpoint_queue = True
+        if len(checkpoint_queue) > 0: # still have processes in the checkpoint queue
+            if fail_to_checkpoint:
+                if cleanup_output:
+                    logging.debug("CLEARING OUTPUT for checkpoint cleanup, clearing %s" % (self.wrk_out_dir) )
+                    cmd = "rm -rf %s*" % self.wrk_out_dir
+                    self.run("cleanup_work_output", cmd)
+                    self.wait_process("cleanup_work_output") # wait for the cleanup
+                commands_to_run.extend(checkpoint_queue) # add all the commands in the checkpoint queue to commands to run
+        logging.debug("Commands to be rerun: (%s) " % str([i[0] for i in commands_to_run])) # log names of commands
+        
+        if not self.is_preemptible: # Recreating the instance as standard instance
+            self.create()
 
         # Rerunning all the commands
         if len(commands_to_run):
@@ -251,3 +307,14 @@ class PreemptibleInstance(Instance):
                 raise RuntimeError("(%s) Instance successfully created but never"
                                    " became available after %s resets!" %
                                    self.name, self.default_num_cmd_retries)
+
+    def __get_gcloud_start_cmd(self):
+        # Create base command
+        args = list()
+        args.append("gcloud compute instances start %s" % self.name)
+
+        # Specify the zone where instance will exist
+        args.append("--zone")
+        args.append(self.zone)
+
+        return " ".join(args)
