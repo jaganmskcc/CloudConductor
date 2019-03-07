@@ -389,16 +389,14 @@ class IndexVCF(_GATKBase):
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
         cmd = "%s %s -cp %s org.broadinstitute.gatk.tools.CatVariants" % (java, jvm_options, gatk)
 
-        output_file_flag = self.get_output_file_flag()
-
         # Generating the CatVariants options
         opts = list()
-        opts.append("{0} {1}".format(output_file_flag, vcf_out))
+        opts.append("-out {0}".format(vcf_out))
         opts.append("-R %s" % ref)
         opts.append("-V %s" % vcf_in)
 
         # Generating the IndexVCF cmd
-        return "%s  %s !LOG3!" % (cmd, " ".join(opts))
+        return "%s %s !LOG3!" % (cmd, " ".join(opts))
 
 class FilterMutectCalls(_GATKBase):
 
