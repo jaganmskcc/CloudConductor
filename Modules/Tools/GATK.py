@@ -23,7 +23,7 @@ class _GATKBase(Module):
         # Set chromosome interval specific arguments
         self.add_argument("location")
         self.add_argument("excluded_location")
-        self.add_argument("interval_list", is_resource=True)
+        self.add_argument("interval_list")
         self.add_argument("bed", is_resource=True)
 
     def get_gatk_command(self):
