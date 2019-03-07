@@ -597,3 +597,130 @@ class SplitNCigarReads(_GATKBase):
 
         # Generate command for splitting reads
         return "{0} SplitNCigarReads {1} !LOG3!".format(gatk_cmd, " ".join(opts))
+
+class Mutect2(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(Mutect2, self).__init__(module_id, is_docker)
+        self.output_keys = ["vcf", "vcf_idx"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("bam",                is_required=True)
+        self.add_argument("bam_idx",            is_required=True)
+        self.add_argument("sample_name",        is_required=True)
+        self.add_argument("is_tumor",           is_required=True)
+        self.add_argument("germline_vcf",       is_required=False,  is_resource=True)
+        self.add_argument("nr_cpus",            is_required=True,   default_value=8)
+        self.add_argument("mem",                is_required=True,   default_value=30)
+
+    def define_output(self):
+        # Declare VCF output filename
+        vcf = self.generate_unique_file_name(extension=".vcf")
+        self.add_output("vcf", vcf)
+        # Declare VCF index output filename
+        vcf_idx = self.generate_unique_file_name(extension=".vcf.idx")
+        self.add_output("vcf_idx", vcf_idx)
+
+    def define_command(self):
+        # Get input arguments
+        bams            = self.get_argument("bam")
+        ref             = self.get_argument("ref")
+        germline_vcf    = self.get_argument("germline_vcf")
+        L               = self.get_argument("location")
+        XL              = self.get_argument("excluded_location")
+        nr_cpus         = self.get_argument("nr_cpus")
+        interval        = self.get_argument("interval_list")
+        bed             = self.get_argument("bed")
+
+        vcf = self.get_output("vcf")
+
+        gatk_cmd        = self.get_gatk_command()
+
+        output_file_flag = self.get_output_file_flag()
+
+        # Get sample names and tumor status
+        sample_names, is_tumor = self.__process_samples()
+
+        # Generating the Mutect2 options
+        opts = list()
+
+        # Add Tumor/Normal sample names
+        if is_tumor[0]:
+            opts.append("-tumor %s" % sample_names[0])
+            opts.append("-normal %s" % sample_names[1])
+        else:
+            opts.append("-tumor %s" % sample_names[1])
+            opts.append("-normal %s" % sample_names[0])
+
+        def flatten(lis):
+            """Given a list, possibly nested to any level, return it flattened."""
+            new_lis = []
+            for item in lis:
+                if type(item) == type([]):
+                    new_lis.extend(flatten(item))
+                else:
+                    new_lis.append(item)
+            return new_lis
+
+        # Add arguments for bams
+        bams = flatten(bams)
+        opts.extend(["-I %s" % bam for bam in bams])
+
+        opts.append("{0} {1}".format(output_file_flag, vcf))
+        opts.append("-R %s" % ref)
+        opts.append("--native-pair-hmm-threads %s" % nr_cpus)
+
+        if germline_vcf is not None:
+            opts.append("--germline-resource %s" % germline_vcf)
+
+        # Limit the locations to be processes
+        if L is not None:
+            if isinstance(L, list):
+                for included in L:
+                    if included != "unmapped":
+                        opts.append("-L \"%s\"" % included)
+            else:
+                opts.append("-L \"%s\"" % L)
+        if XL is not None:
+            if isinstance(XL, list):
+                for excluded in XL:
+                    opts.append("-XL \"%s\"" % excluded)
+            else:
+                opts.append("-XL \"%s\"" % XL)
+
+        # Check if an interval list was provided and if yes, place it
+        if interval is not None:
+            opts.append("-L {0}".format(interval))
+
+        # Check if a BED file was provided and if yes, place it
+        if bed is not None:
+            opts.append("-L {0}".format(bed))
+
+        # Generating command for Mutect2
+        return "{0} Mutect2 {1} !LOG3!".format(gatk_cmd, " ".join(opts))
+
+    def __process_samples(self):
+
+        # Generate a dictionary that will contain the samples and their tumor status
+        tumor_status = {}
+
+        # Get samples and tumor status
+        sample_names = self.get_argument("sample_name")
+        is_tumor = self.get_argument("is_tumor")
+
+        # Add each sample to the tumor status dictionary
+        for _name, _tumor in zip(sample_names, is_tumor):
+
+            # Extract the sample ID
+            _id = _name.rsplit("_", 1)[0]
+
+            # Check if the current sample id has already been introduced but with a different tumor status
+            if _id in tumor_status and tumor_status[_id] != _tumor:
+                logging.error("Same sample ID '%s' was provided as different tumor statuses!" % _id)
+                raise RuntimeError("Same sample ID '%s' was provided as different tumor statuses!" % _id)
+
+            # If we have not stopped, just added it (possibly again) in the dictionary
+            tumor_status[_id] = _tumor
+
+        return tumor_status.keys(), tumor_status.values()
