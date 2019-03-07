@@ -8,6 +8,7 @@ class Coverage(Module):
     def define_input(self):
         self.add_argument("bam",        is_required=True)
         self.add_argument("bam_idx",    is_required=True)
+        self.add_argument("ref_idx",    is_required=True)
         self.add_argument("bed",        is_required=True, is_resource=True)
         self.add_argument("bedtools",   is_required=True, is_resource=True)
         self.add_argument("nr_cpus",    is_required=True, default_value=2)
@@ -22,6 +23,7 @@ class Coverage(Module):
     def define_command(self):
         # Define command for running bedtools coverage from a platform
         bam         = self.get_argument("bam")
+        ref_idx     = self.get_argument("ref_idx")
         bed         = self.get_argument("bed")
         bedtools    = self.get_argument("bedtools")
 
@@ -29,6 +31,6 @@ class Coverage(Module):
         coverage_report = self.get_output("coverage_report")
 
         # Generating coverage command
-        cmd = "{0} coverage -a {1} -b {2} > {3} !LOG2!".format(bedtools, bed, bam, coverage_report)
+        cmd = "{0} coverage -a {1} -b {2} -sorted -g {4} > {3} !LOG2!".format(bedtools, bed, bam, coverage_report, ref_idx)
 
         return cmd
