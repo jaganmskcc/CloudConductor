@@ -78,11 +78,6 @@ class PreemptibleInstance(Instance):
         self.processes.pop("destroy", None)
         self.processes.pop("start", None)
 
-        # Remove commands that get run during configure_instance()
-        for proc in ["configCRCMOD", "install_packages", "configureSSH", "restartSSH"]:
-            if proc in self.processes:
-                self.processes.pop(proc)
-
         # Identifying which process(es) need to be recalled
         commands_to_run = list()
         checkpoint_queue = list()
