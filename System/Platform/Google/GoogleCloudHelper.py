@@ -10,11 +10,16 @@ import math
 import zlib
 import time
 
+
 class GoogleCloudHelperError(Exception):
     pass
 
 
-class GoogleCloudHelper:
+class GoogleResourceNotFound(Exception):
+    pass
+
+
+class GoogleCloudHelper(object):
 
     prices = None
     machine_types = None
@@ -29,6 +34,11 @@ class GoogleCloudHelper:
 
         # Check if any error has appeared
         if len(err) != 0 and "error" in err.lower():
+
+            # Check if the error is a "not found error"
+            if "was not found" in err.lower():
+                raise GoogleResourceNotFound("Resource not found!")
+
             # Retry command if possible
             if num_retries > 0:
                 # Sleep for 5-10 minutes before retrying if error due to api rate limit
@@ -129,22 +139,6 @@ class GoogleCloudHelper:
         GoogleCloudHelper.machine_types = json.loads(machine_types)
 
         return GoogleCloudHelper.machine_types
-
-    @staticmethod
-    def get_instance_status(name, zone):
-        # Check status of instance
-        cmd = 'gcloud compute instances describe %s --format json --zone %s' % (name, zone)
-        out = GoogleCloudHelper.run_cmd(cmd, err_msg="Unable to get status for instance '%s'!" % name)
-
-        # Read the status returned by Google
-        msg_json = json.loads(out)
-        if "status" not in msg_json:
-            logging.error("Invalid description recieved for instance '%s'! 'status' not listed as a key!" % name)
-            logging.error("Received following description:\n%s" % out)
-            raise RuntimeError("Instance '%s' failed!" % name)
-
-        # Return instance status
-        return msg_json["status"]
 
     @staticmethod
     def send_pubsub_message(topic, message=None, attributes=None, encode=True, compress=False):
@@ -275,14 +269,6 @@ class GoogleCloudHelper:
                 return True
 
         return False
-
-    @staticmethod
-    def gs_path_exists(gs_path):
-        # Check if path exists on google bucket storage
-        cmd = "gsutil ls %s" % gs_path
-        proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-        out, err = proc.communicate()
-        return len(err) == 0
 
     @staticmethod
     def mb(gs_bucket, project, region):
@@ -453,16 +439,3 @@ class GoogleCloudHelper:
             logging.error("GoogleCloudHelper describe returned non-json output for instance '%s'!"
                           "Output received:\n%s" % (ins_name, out))
             raise
-
-    @staticmethod
-    def instance_exists(ins_name):
-        # Check if the current instance still exists on the platform
-        cmd = 'gcloud compute instances list | grep "%s"' % ins_name
-        out = GoogleCloudHelper.run_cmd(cmd, err_msg="Unable to determine whether instance '%s' exists!" % ins_name)
-        return len(out) != 0
-
-
-
-
-
-

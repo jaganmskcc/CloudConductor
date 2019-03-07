@@ -3,10 +3,11 @@ import subprocess as sp
 import time
 import math
 import random
+import getpass
 
 from System.Platform import Process
 from System.Platform import Processor
-from System.Platform.Google import GoogleCloudHelper
+from System.Platform.Google import GoogleCloudHelper, GoogleResourceNotFound
 
 class Instance(Processor):
 
@@ -64,7 +65,8 @@ class Instance(Processor):
          # Get external IP address
         ext_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
 
-        cmd = "ssh -i ~/.ssh/google_compute_engine -o CheckHostIP=no -o StrictHostKeyChecking=no gap@{0} -- '{1}'".format(ext_IP, cmd)
+        cmd = "ssh -i ~/.ssh/google_compute_engine " \
+              "-o CheckHostIP=no -o StrictHostKeyChecking=no {0}@{1} -- '{2}'".format(getpass.getuser(), ext_IP, cmd)
         return cmd
 
     def create(self):
@@ -320,26 +322,32 @@ class Instance(Processor):
 
     def __poll_status(self):
 
-        if not GoogleCloudHelper.instance_exists(self.name):
-            self.startup_script_complete = False
+        # We will consider that the startup script was not complete
+        self.startup_script_complete = False
+
+        try:
+
+            # Obtain the instance information
+            data = GoogleCloudHelper.describe(self.name, self.zone)
+
+            # Check if the instance startup script was complete
+            for item in data["metadata"]["items"]:
+                if item["key"] == "READY":
+                    self.startup_script_complete = True
+
+            # Return the status accordingly
+            if data["status"] in ["TERMINATED", "STOPPING"]:
+                return Processor.DESTROYING
+
+            elif data["status"] in ["PROVISIONING", "STAGING"]:
+                return Processor.CREATING
+
+            elif data["status"] == "RUNNING":
+                return Processor.AVAILABLE if self.startup_script_complete else Processor.CREATING
+
+        # If no resource found, then the processor was manually deleted by someone
+        except GoogleResourceNotFound:
             return Processor.OFF
-
-        # Try to get instance status
-        status = GoogleCloudHelper.get_instance_status(self.name, self.zone)
-        if status in ["TERMINATED", "STOPPING"]:
-            self.startup_script_complete = False
-            return Processor.DESTROYING
-
-        elif status in ["PROVISIONING", "STAGING"]:
-            self.startup_script_complete = False
-            return Processor.CREATING
-
-        elif status == "RUNNING":
-            if self.startup_script_complete or self.poll_startup_script():
-                self.startup_script_complete = True
-                return Processor.AVAILABLE
-            self.startup_script_complete = False
-            return Processor.CREATING
 
     def poll_startup_script(self):
         # Return true if instance is currently available for running commands
@@ -347,10 +355,9 @@ class Instance(Processor):
             data = GoogleCloudHelper.describe(self.name, self.zone)
 
         # Catch error related to instance not existing
-        except RuntimeError:
+        except GoogleResourceNotFound:
             logging.error("(%s) Cannot poll startup script! Instance either was removed or was never created!" % self.name)
-            logging.error("(%s) Current instance status: %s" % (self.name, self.get_status()))
-            raise
+            return False
 
         # Check to see if "READY" has been added to instance metadata indicating startup-script has complete
         for item in data["metadata"]["items"]:

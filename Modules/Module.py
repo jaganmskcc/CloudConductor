@@ -44,14 +44,29 @@ class Module(object):
 
     def add_argument(self, key, is_required=False, is_resource=False, default_value=None):
 
+        # Check if the argument key is present or not
         if key in self.arguments:
-            logging.error("In module %s, the input argument '%s' is defined multiple time!" % (self.module_id, key))
-            raise RuntimeError("Input argument '%s' has been defined multiple times!" % key)
+            logging.warning("In module %s, the input argument '%s' is already defined!"
+                            "We will overwrite its information with the new information." % (self.module_id, key))
 
-        self.arguments[key] = Argument(key,
-                                       is_required=is_required,
-                                       is_resource=is_resource,
-                                       default_value=default_value)
+            # Get the value of the old argument
+            old_value = self.arguments[key].get_value()
+
+            # Generate a new argument object
+            self.arguments[key] = Argument(key,
+                                           is_required=is_required,
+                                           is_resource=is_resource,
+                                           default_value=default_value)
+
+            # Set the old value to the new argument
+            self.arguments[key].set(old_value)
+
+        else:
+            # Just generate a new argument object
+            self.arguments[key] = Argument(key,
+                                           is_required=is_required,
+                                           is_resource=is_resource,
+                                           default_value=default_value)
 
     def add_output(self, key, value, is_path=True, **kwargs):
         if key in self.output:

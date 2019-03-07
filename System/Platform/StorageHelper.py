@@ -21,7 +21,6 @@ class StorageHelper(object):
 
         # Optionally add logging
         cmd = "%s !LOG3!" % cmd if log else cmd
-        print cmd
 
         # Run command and return job name
         self.proc.run(job_name, cmd, **kwargs)
@@ -100,7 +99,6 @@ class StorageHelper(object):
 
         # Optionally add logging
         cmd = "%s !LOG3!" % cmd if log else cmd
-        print cmd
 
         # Run command and return job name
         self.proc.run(job_name, cmd, **kwargs)

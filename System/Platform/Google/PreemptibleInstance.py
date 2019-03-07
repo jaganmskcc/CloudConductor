@@ -95,12 +95,7 @@ class PreemptibleInstance(Instance):
             runtime = self.stop_time - self.start_time
 
         # Add previous runtimes from restart history
-        if len(self.cost_history) > 0:
-            print "Instance runtime records: {0}".format(self.name)
         for record in self.cost_history:
-            if record[1] is None or record[2] is None:
-                print "THIS ONE WOULD HAVE FAILED: "
-            print record
             end = record[2] if record[2] is not None else 0
             start = record[1] if record[1] is not None else 0
             runtime += end - start
