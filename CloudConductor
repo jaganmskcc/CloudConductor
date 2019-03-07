@@ -2,6 +2,7 @@
 
 import sys
 import os
+import resource
 import argparse
 import logging
 import subprocess as sp
@@ -160,6 +161,14 @@ def configure_import_paths():
     for plat in available_plat_modules:
         sys.path.insert(1, os.path.join(exec_dir, "System/Platform/%s" % plat))
 
+def configure_res_limit():
+
+    # Get the current hard limit for the number of open file descriptors
+    _, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+
+    # Set the maximum (soft) number of open file descriptors to the maximum (hard) limit
+    resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+
 def get_git_version():
     # Return the git commit at runtime
 
@@ -193,6 +202,9 @@ def main():
 
     # Configuring the importing locations
     configure_import_paths()
+
+    # Configure system resource limits
+    configure_res_limit()
 
     # Create pipeline object
     pipeline = GAPipeline(pipeline_id=args.pipeline_name,
