@@ -308,7 +308,6 @@ class TaskWorker(Thread):
 
         # Add sizes of each input file
         for input_file in input_files:
-            print input_file
             # Overestimate for gzipped files
             if input_file.get_path().endswith(".gz"):
                 input_size += input_file.get_size()*5
