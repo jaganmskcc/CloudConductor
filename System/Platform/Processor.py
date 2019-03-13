@@ -170,7 +170,13 @@ class Processor(object):
         self.wrk_out_dir = new_wrk_out_dir
 
     def set_start_time(self):
+
         if self.start_time is None:
+            # If first time setting the start time
+            self.start_time = time.time()
+        else:
+            # If it's a reset, consider anything until new start as a run
+            self.set_stop_time()
             self.start_time = time.time()
 
     def set_stop_time(self):
@@ -184,12 +190,34 @@ class Processor(object):
         return self.name
 
     def get_runtime(self):
-        if self.start_time is None:
-            return 0
-        elif self.stop_time is None:
-            return time.time() - self.start_time
+
+        count = 0
+
+        # Only try to obtain a (correct) positive runtime 5 times
+        while count < 5:
+
+            count += 1
+
+            # Return 0 if instance hasn't started yet
+            if self.start_time is None:
+                runtime =  0
+
+            # Instance is still running so register runtime since last start/restart
+            elif self.stop_time is None or self.stop_time < self.start_time:
+                runtime = time.time() - self.start_time
+
+            # Instance has been stopped
+            else:
+                runtime = self.stop_time - self.start_time
+
+            # If (correct) positivie runtime, return
+            if runtime >= 0:
+                return runtime
+
         else:
-            return self.stop_time - self.start_time
+            # Could not obtain the runtime, so raise an exception
+            logging.error("(%s) Could not obtain the processor runtime" % self.name)
+            raise RuntimeError("(%s) Could not obtain the processor runtime" % self.name)
 
     def get_start_time(self):
         return self.start_time

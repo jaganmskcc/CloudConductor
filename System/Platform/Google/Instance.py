@@ -157,7 +157,7 @@ class Instance(Processor):
             # If no errors thrown, try waiting on the process again
             return self.wait_process(proc_name)
 
-        if proc_name == "create":
+        if proc_name in ["create", "start"]:
             # Set start time
             self.set_start_time()
 

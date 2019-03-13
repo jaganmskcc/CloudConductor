@@ -20,7 +20,7 @@ class PreemptibleInstance(Instance):
         self.reset_count = 0
 
         # Stack for determining costs across resets
-        self.cost_history = []
+        self.reset_history = []
     
     def reset(self):
         # Resetting takes place just for preemptible instances
@@ -71,7 +71,7 @@ class PreemptibleInstance(Instance):
 
         # Add record to cost history of last run
         logging.debug("({0}) Appending to cost history: {1}, {2}, {3}".format(self.name, prev_price, prev_start, self.stop_time))
-        self.cost_history.append((prev_price, prev_start, self.stop_time))
+        self.reset_history.append((prev_price, prev_start, self.stop_time))
 
         # Removing old process(es) that shouldn't be rerun after a restart
         self.processes.pop("create", None)
@@ -134,43 +134,39 @@ class PreemptibleInstance(Instance):
     def get_runtime(self):
         # Compute total runtime across all resets
         # Return 0 if instance hasn't started yet
-        if self.start_time is None:
-            return 0
 
-        # Instance is still running so register runtime since last start/restart
-        elif self.stop_time is None or self.stop_time < self.start_time:
-            runtime = time.time() - self.start_time
+        # Obtain the current instance initial runtime
+        runtime = super(PreemptibleInstance, self).get_runtime()
 
-        # Instance has been stopped
-        else:
-            runtime = self.stop_time - self.start_time
+        # Add previous costs from reset history
+        for price, start, end in self.reset_history:
 
-        # Add previous runtimes from restart history
-        for record in self.cost_history:
-            end = record[2] if record[2] is not None else 0
-            start = record[1] if record[1] is not None else 0
+            # Set variables to 0 if any of them are None
+            start = start or 0
+            end = end or 0
+
+            # Increment the runtime
             runtime += end - start
+
         return runtime
 
     def compute_cost(self):
         # Compute total cost across all resets
-        cost = 0
-        if self.start_time is None:
-            return 0
+        cost = super(PreemptibleInstance, self).get_runtime() * self.price
 
-        elif self.stop_time is None or self.stop_time < self.start_time:
-            cost = (time.time() - self.start_time) * self.price
+        # Add previous costs from reset history
+        for price, start, end in self.reset_history:
 
-        else:
-            cost = (self.stop_time - self.start_time) * self.price
+            # Set variables to 0 if any of them are None
+            price = price or 0
+            start = start or 0
+            end = end or 0
 
-        for record in self.cost_history:
-            end = record[2] if record[2] is not None else 0
-            start = record[1] if record[1] is not None else 0
-            price = record[0] if record[0] is not None else 0
-            cost += (end-start) * price
+            # Increment the total cost
+            cost += (end - start) * price
 
-        return cost/3600
+        # The price is per hour not per second
+        return cost / 3600
 
     def handle_failure(self, proc_name, proc_obj):
 
