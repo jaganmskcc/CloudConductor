@@ -167,7 +167,12 @@ class Processor(object):
         self.wrk_dir = new_wrk_dir
 
     def set_wrk_out_dir(self, new_wrk_out_dir):
-        self.wrk_out_dir = new_wrk_out_dir
+        if new_wrk_out_dir == "/" or new_wrk_out_dir is None:
+            self.wrk_out_dir = os.path.join(self.wrk_dir, "output")
+            logging.warning("(%s) Working output directory was not set or set to '/'. "
+                            "Automatically setting to '%s'." % (self.name, self.wrk_out_dir))
+        else:
+            self.wrk_out_dir = new_wrk_out_dir
 
     def set_start_time(self):
 

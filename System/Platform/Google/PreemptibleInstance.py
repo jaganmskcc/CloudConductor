@@ -98,10 +98,7 @@ class PreemptibleInstance(Instance):
             if process_tuple[0] in checkpoint_commands: # hit a checkpoint marker, start adding to the checkpoint_queue after this process
                 if fail_to_checkpoint:
                     if cleanup_output:
-                        logging.debug("CLEARING OUTPUT for checkpoint cleanup, clearing %s" % (self.wrk_out_dir) )
-                        cmd = "rm -rf %s*" % self.wrk_out_dir
-                        self.run("cleanup_work_output", cmd)
-                        self.wait_process("cleanup_work_output") # wait for the cleanup
+                        self.__remove_wrk_out_dir()
                     commands_to_run.extend(checkpoint_queue) # add all the commands in the checkpoint queue to commands to run
                 cleanup_output = [d[1] for d in self.checkpoints if d[0] == process_tuple[0]][0]
                 logging.debug("CLEAR OUTPUT IS: %s FOR process %s" % (str(cleanup_output), str(process_tuple[0])))
@@ -110,10 +107,7 @@ class PreemptibleInstance(Instance):
         if len(checkpoint_queue) > 0: # still have processes in the checkpoint queue
             if fail_to_checkpoint:
                 if cleanup_output:
-                    logging.debug("CLEARING OUTPUT for checkpoint cleanup, clearing %s" % (self.wrk_out_dir) )
-                    cmd = "rm -rf %s*" % self.wrk_out_dir
-                    self.run("cleanup_work_output", cmd)
-                    self.wait_process("cleanup_work_output") # wait for the cleanup
+                    self.__remove_wrk_out_dir()
                 commands_to_run.extend(checkpoint_queue) # add all the commands in the checkpoint queue to commands to run
         logging.debug("Commands to be rerun: (%s) " % str([i[0] for i in commands_to_run])) # log names of commands
         
@@ -298,6 +292,17 @@ class PreemptibleInstance(Instance):
                 raise RuntimeError("(%s) Instance successfully created but never"
                                    " became available after %s resets!" %
                                    self.name, self.default_num_cmd_retries)
+
+    def __remove_wrk_out_dir(self):
+
+        logging.debug("(%s) CLEARING OUTPUT for checkpoint cleanup, clearing %s." % (self.name, self.wrk_out_dir))
+
+        # Generate the removal command. HAS to be 'sudo' to be able to remove files created by any user.
+        cmd = "sudo rm -rf %s*" % self.wrk_out_dir
+
+        # Clean the working output directory
+        self.run("cleanup_work_output", cmd)
+        self.wait_process("cleanup_work_output")
 
     def __get_gcloud_start_cmd(self):
         # Create base command
