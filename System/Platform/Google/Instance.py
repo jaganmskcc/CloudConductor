@@ -448,10 +448,10 @@ class Instance(Processor):
         startup_script = """#!/usr/bin/env bash
 
 # Signal that instance is fully initialized
-gcloud --quiet compute instances add-metadata $(hostname) --metadata READY=TRUE --zone %s
-""" % self.zone
+gcloud --quiet compute instances add-metadata %s --metadata READY=TRUE --zone %s
+""" % (self.name, self.zone)
         args.append("--metadata")
-        args.append("startup-script=%s" % startup_script)
+        args.append("startup-script='%s'" % startup_script)
         return " ".join(args)
 
     def __get_gcloud_destroy_cmd(self):
