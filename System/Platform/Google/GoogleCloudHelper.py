@@ -439,3 +439,18 @@ class GoogleCloudHelper(object):
             logging.error("GoogleCloudHelper describe returned non-json output for instance '%s'!"
                           "Output received:\n%s" % (ins_name, out))
             raise
+
+    @staticmethod
+    def remove_metadata(name, zone, keys):
+
+        # Ensure keys is a list of strings
+        if not isinstance(keys, list):
+            keys = [str(keys)]
+        else:
+            keys = list(map(str, keys))
+
+        # Generate metadata remove command
+        cmd = "gcloud compute instances remove-metadata %s --keys %s --zone %s" % (name, ",".join(keys), zone)
+
+        # Run command
+        GoogleCloudHelper.run_cmd(cmd, err_msg="Could not remove metadata from instance '%s'" % name)

@@ -5,6 +5,7 @@ import time
 from System.Platform import Process
 from System.Platform import Processor
 from Instance import Instance
+from System.Platform.Google import GoogleCloudHelper
 
 class PreemptibleInstance(Instance):
 
@@ -45,9 +46,15 @@ class PreemptibleInstance(Instance):
         prev_start = self.start_time
 
         if self.is_preemptible: # still want to use a preemptible image, so, we don't have to recreate
+
+            # Remove "READY" metadata key from instance that states that the startup script is complete
+            GoogleCloudHelper.remove_metadata(self.name, self.zone, ["READY"])
+            self.startup_script_complete = False
+
             # Set status to indicate that instance cannot run commands and is destroying
             logging.info("(%s) Process 'start' started!" % self.name)
             cmd = self.__get_gcloud_start_cmd()
+
             # Run command, wait for start to complete
             self.processes["start"] = Process(cmd,
                                                 cmd=cmd,
@@ -61,8 +68,9 @@ class PreemptibleInstance(Instance):
 
             # Wait for startup script to completely finish
             logging.debug("(%s) Waiting for instance to finish starting up..." % self.name)
-            self.startup_script_complete = False
             self.wait_until_ready()
+
+            # Instance restart complete
             logging.debug("(%s) Instance restarted, continue running processes..." % self.name)
         else:
             logging.debug("(%s) Destroying old instance to create new standard instance..." % self.name)
