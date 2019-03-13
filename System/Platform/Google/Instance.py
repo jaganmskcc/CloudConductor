@@ -445,9 +445,13 @@ class Instance(Processor):
             args.append(self.instance_type)
 
         # Add metadata to run base Google startup-script
-        startup_script_location = "System/Platform/Google/GoogleStartupScript.sh"
-        args.append("--metadata-from-file")
-        args.append("startup-script=%s" % startup_script_location)
+        startup_script = """#!/usr/bin/env bash
+
+# Signal that instance is fully initialized
+gcloud --quiet compute instances add-metadata $(hostname) --metadata READY=TRUE --zone %s
+""" % self.zone
+        args.append("--metadata")
+        args.append("startup-script=%s" % startup_script)
         return " ".join(args)
 
     def __get_gcloud_destroy_cmd(self):
