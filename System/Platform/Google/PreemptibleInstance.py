@@ -301,6 +301,9 @@ class PreemptibleInstance(Instance):
                                    " became available after %s resets!" %
                                    self.name, self.default_num_cmd_retries)
 
+        # Get and set external IP address if instance is ready
+        self.external_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
+
     def __remove_wrk_out_dir(self):
 
         logging.debug("(%s) CLEARING OUTPUT for checkpoint cleanup, clearing %s." % (self.name, self.wrk_out_dir))

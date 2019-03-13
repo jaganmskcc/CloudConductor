@@ -62,11 +62,13 @@ class Instance(Processor):
         # Adapt command for running on instance through gcloud ssh
         cmd = cmd.replace("'", "'\"'\"'")
 
-         # Get external IP address
-        ext_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
+        # Obtain the external IP in case is not set
+        if self.external_IP is None:
+            self.external_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
 
         cmd = "ssh -i ~/.ssh/google_compute_engine " \
-              "-o CheckHostIP=no -o StrictHostKeyChecking=no {0}@{1} -- '{2}'".format(getpass.getuser(), ext_IP, cmd)
+              "-o CheckHostIP=no -o StrictHostKeyChecking=no " \
+              "{0}@{1} -- '{2}'".format(getpass.getuser(), self.external_IP, cmd)
         return cmd
 
     def create(self):
@@ -270,6 +272,9 @@ class Instance(Processor):
                 raise RuntimeError("(%s) Instance successfully created but never"
                                    " became available after multiple tries!" %
                                    self.name)
+
+        # Get and set external IP address if instance is ready
+        self.external_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
 
     def raise_error(self, proc_name, proc_obj):
         # Log failure to debug logger if quiet failure
