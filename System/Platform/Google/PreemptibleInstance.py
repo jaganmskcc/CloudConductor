@@ -299,7 +299,7 @@ class PreemptibleInstance(Instance):
 
                 raise RuntimeError("(%s) Instance successfully created but never"
                                    " became available after %s resets!" %
-                                   self.name, self.default_num_cmd_retries)
+                                   (self.name, self.default_num_cmd_retries))
 
         # Get and set external IP address if instance is ready
         self.external_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
