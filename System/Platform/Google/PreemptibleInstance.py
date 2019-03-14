@@ -51,6 +51,21 @@ class PreemptibleInstance(Instance):
             GoogleCloudHelper.remove_metadata(self.name, self.zone, ["READY"])
             self.startup_script_complete = False
 
+            # Actually ensure the instance is stopped, so the startup script can be relaunched
+            logging.info("(%s) Process 'stop' started!" % self.name)
+            cmd = self.__get_gcloud_stop_cmd()
+
+            # Run command to stop the instances
+            self.processes["stop"] = Process(cmd,
+                                             cmd=cmd,
+                                             stdout=sp.PIPE,
+                                             stderr=sp.PIPE,
+                                             shell=True,
+                                             num_retries=self.default_num_cmd_retries)
+
+            # Wait for instance to stop
+            self.wait_process("stop")
+
             # Set status to indicate that instance cannot run commands and is destroying
             logging.info("(%s) Process 'start' started!" % self.name)
             cmd = self.__get_gcloud_start_cmd()
@@ -85,6 +100,7 @@ class PreemptibleInstance(Instance):
         self.processes.pop("create", None)
         self.processes.pop("destroy", None)
         self.processes.pop("start", None)
+        self.processes.pop("stop", None)
 
         # Identifying which process(es) need to be recalled
         commands_to_run = list()
@@ -319,6 +335,17 @@ class PreemptibleInstance(Instance):
         # Create base command
         args = list()
         args.append("gcloud compute instances start %s" % self.name)
+
+        # Specify the zone where instance will exist
+        args.append("--zone")
+        args.append(self.zone)
+
+        return " ".join(args)
+
+    def __get_gcloud_stop_cmd(self):
+        # Create base command
+        args = list()
+        args.append("gcloud compute instances stop %s" % self.name)
 
         # Specify the zone where instance will exist
         args.append("--zone")
