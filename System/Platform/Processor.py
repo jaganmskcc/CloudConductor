@@ -175,14 +175,7 @@ class Processor(object):
             self.wrk_out_dir = new_wrk_out_dir
 
     def set_start_time(self):
-
-        if self.start_time is None:
-            # If first time setting the start time
-            self.start_time = time.time()
-        else:
-            # If it's a reset, consider anything until new start as a run
-            self.set_stop_time()
-            self.start_time = time.time()
+        self.start_time = time.time()
 
     def set_stop_time(self):
         self.stop_time = time.time()

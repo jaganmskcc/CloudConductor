@@ -164,7 +164,7 @@ class Instance(Processor):
             self.set_start_time()
 
         # Set status to 'OFF' if destroy is True
-        elif proc_name == "destroy":
+        elif proc_name in ["destroy", "stop"]:
             # Set the stop time
             self.set_stop_time()
 
