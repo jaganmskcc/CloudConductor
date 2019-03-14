@@ -118,7 +118,7 @@ class PreemptibleInstance(Instance):
             proc_name, proc_obj = self.processes.popitem(last=False)
 
             # Check if process was successful and complete. If yes, save it in the record and get the next process
-            if not proc_obj.has_failed() or proc_obj.complete:
+            if not proc_obj.has_failed() and proc_obj.complete:
                 completed_processes[proc_name] = proc_obj
                 continue
 
