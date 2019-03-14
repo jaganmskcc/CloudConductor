@@ -23,7 +23,47 @@ class PreemptibleInstance(Instance):
 
         # Stack for determining costs across resets
         self.reset_history = []
-    
+
+    def start(self):
+
+        logging.info("(%s) Process 'start' started!" % self.name)
+        cmd = self.__get_gcloud_start_cmd()
+
+        # Run command, wait for start to complete
+        self.processes["start"] = Process(cmd,
+                                          cmd=cmd,
+                                          stdout=sp.PIPE,
+                                          stderr=sp.PIPE,
+                                          shell=True,
+                                          num_retries=self.default_num_cmd_retries)
+
+        # Wait for start to complete if requested
+        self.wait_process("start")
+
+        # Wait for startup script to completely finish
+        logging.debug("(%s) Waiting for instance to finish starting up..." % self.name)
+        self.startup_script_complete = False
+        self.wait_until_ready()
+
+    def stop(self):
+
+        # Remove "READY" metadata key from instance that states that the startup script is complete
+        GoogleCloudHelper.remove_metadata(self.name, self.zone, ["READY"])
+
+        logging.info("(%s) Process 'stop' started!" % self.name)
+        cmd = self.__get_gcloud_stop_cmd()
+
+        # Run command to stop the instances
+        self.processes["stop"] = Process(cmd,
+                                         cmd=cmd,
+                                         stdout=sp.PIPE,
+                                         stderr=sp.PIPE,
+                                         shell=True,
+                                         num_retries=self.default_num_cmd_retries)
+
+        # Wait for instance to stop
+        self.wait_process("stop")
+
     def reset(self):
         # Resetting takes place just for preemptible instances
         if not self.is_preemptible:
@@ -48,43 +88,11 @@ class PreemptibleInstance(Instance):
 
         if self.is_preemptible: # still want to use a preemptible image, so, we don't have to recreate
 
-            # Remove "READY" metadata key from instance that states that the startup script is complete
-            GoogleCloudHelper.remove_metadata(self.name, self.zone, ["READY"])
-            self.startup_script_complete = False
-
             # Actually ensure the instance is stopped, so the startup script can be relaunched
-            logging.info("(%s) Process 'stop' started!" % self.name)
-            cmd = self.__get_gcloud_stop_cmd()
+            self.stop()
 
-            # Run command to stop the instances
-            self.processes["stop"] = Process(cmd,
-                                             cmd=cmd,
-                                             stdout=sp.PIPE,
-                                             stderr=sp.PIPE,
-                                             shell=True,
-                                             num_retries=self.default_num_cmd_retries)
-
-            # Wait for instance to stop
-            self.wait_process("stop")
-
-            # Set status to indicate that instance cannot run commands and is destroying
-            logging.info("(%s) Process 'start' started!" % self.name)
-            cmd = self.__get_gcloud_start_cmd()
-
-            # Run command, wait for start to complete
-            self.processes["start"] = Process(cmd,
-                                                cmd=cmd,
-                                                stdout=sp.PIPE,
-                                                stderr=sp.PIPE,
-                                                shell=True,
-                                                num_retries=self.default_num_cmd_retries)
-
-            # Wait for start to complete if requested
-            self.wait_process("start")
-
-            # Wait for startup script to completely finish
-            logging.debug("(%s) Waiting for instance to finish starting up..." % self.name)
-            self.wait_until_ready()
+            # Restart the instance
+            self.start()
 
             # Instance restart complete
             logging.debug("(%s) Instance restarted, continue running processes..." % self.name)
@@ -281,7 +289,6 @@ class PreemptibleInstance(Instance):
             elif "destroy" not in self.processes:
                 needs_reset = True
 
-
         # Reset instance if its been destroyed/disappeared unexpectedly (i.e. preemption)
         if needs_reset and self.is_preemptible:
             logging.warning("(%s) Instance preempted! Resetting..." % self.name)
@@ -334,7 +341,8 @@ class PreemptibleInstance(Instance):
             if self.creation_resets < self.default_num_cmd_retries:
                 logging.debug("(%s) Create took more than 10 minutes! Resetting instance!" % self.name)
                 self.creation_resets += 1
-                self.reset()
+                self.stop()
+                self.start()
 
             # Throw error if instance still isn't ready after multiple tries
             else:

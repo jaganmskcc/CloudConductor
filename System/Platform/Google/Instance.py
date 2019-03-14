@@ -359,6 +359,8 @@ class Instance(Processor):
         try:
             data = GoogleCloudHelper.describe(self.name, self.zone)
 
+            logging.debug("(%s) Instance Status: %s" % (self.name, data["status"]))
+
         # Catch error related to instance not existing
         except GoogleResourceNotFound:
             logging.error("(%s) Cannot poll startup script! Instance either was removed or was never created!" % self.name)
