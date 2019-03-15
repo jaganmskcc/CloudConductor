@@ -1,10 +1,12 @@
 import logging
 import subprocess as sp
 import time
+from collections import OrderedDict
 
 from System.Platform import Process
 from System.Platform import Processor
 from Instance import Instance
+from System.Platform.Google import GoogleCloudHelper
 
 class PreemptibleInstance(Instance):
 
@@ -20,8 +22,48 @@ class PreemptibleInstance(Instance):
         self.reset_count = 0
 
         # Stack for determining costs across resets
-        self.cost_history = []
-    
+        self.reset_history = []
+
+    def start(self):
+
+        logging.info("(%s) Process 'start' started!" % self.name)
+        cmd = self.__get_gcloud_start_cmd()
+
+        # Run command, wait for start to complete
+        self.processes["start"] = Process(cmd,
+                                          cmd=cmd,
+                                          stdout=sp.PIPE,
+                                          stderr=sp.PIPE,
+                                          shell=True,
+                                          num_retries=self.default_num_cmd_retries)
+
+        # Wait for start to complete if requested
+        self.wait_process("start")
+
+        # Wait for startup script to completely finish
+        logging.debug("(%s) Waiting for instance to finish starting up..." % self.name)
+        self.startup_script_complete = False
+        self.wait_until_ready()
+
+    def stop(self):
+
+        # Remove "READY" metadata key from instance that states that the startup script is complete
+        GoogleCloudHelper.remove_metadata(self.name, self.zone, ["READY"])
+
+        logging.info("(%s) Process 'stop' started!" % self.name)
+        cmd = self.__get_gcloud_stop_cmd()
+
+        # Run command to stop the instances
+        self.processes["stop"] = Process(cmd,
+                                         cmd=cmd,
+                                         stdout=sp.PIPE,
+                                         stderr=sp.PIPE,
+                                         shell=True,
+                                         num_retries=self.default_num_cmd_retries)
+
+        # Wait for instance to stop
+        self.wait_process("stop")
+
     def reset(self):
         # Resetting takes place just for preemptible instances
         if not self.is_preemptible:
@@ -44,30 +86,94 @@ class PreemptibleInstance(Instance):
         prev_price = self.price
         prev_start = self.start_time
 
-        # Destroying the instance
-        self.destroy()
+        if self.is_preemptible: # still want to use a preemptible image, so, we don't have to recreate
+
+            # Actually ensure the instance is stopped, so the startup script can be relaunched
+            self.stop()
+
+            # Restart the instance
+            self.start()
+
+            # Instance restart complete
+            logging.debug("(%s) Instance restarted, continue running processes..." % self.name)
+        else:
+            logging.debug("(%s) Destroying old instance to create new standard instance..." % self.name)
+            # Destroying the instance
+            self.destroy()
 
         # Add record to cost history of last run
         logging.debug("({0}) Appending to cost history: {1}, {2}, {3}".format(self.name, prev_price, prev_start, self.stop_time))
-        self.cost_history.append((prev_price, prev_start, self.stop_time))
+        self.reset_history.append((prev_price, prev_start, self.stop_time))
 
-        # Removing old process(es)
+        # Removing old process(es) that shouldn't be rerun after a restart
         self.processes.pop("create", None)
         self.processes.pop("destroy", None)
-
-        # Remove commands that get run during configure_instance()
-        for proc in ["configCRCMOD", "install_packages", "configureSSH", "restartSSH"]:
-            if proc in self.processes:
-                self.processes.pop(proc)
+        self.processes.pop("start", None)
+        self.processes.pop("stop", None)
 
         # Identifying which process(es) need to be recalled
+        completed_processes = OrderedDict()
         commands_to_run = list()
+        checkpoint_queue = list()
+        add_to_checkpoint_queue = False
+        fail_to_checkpoint = False
+        checkpoint_commands = [i[0] for i in self.checkpoints] # create array of just the commands
+        logging.debug("CHECKPOINT COMMANDS: %s" % str(checkpoint_commands))
+        cleanup_output = False
         while len(self.processes):
-            process_tuple = self.processes.popitem(last=False)
-            commands_to_run.append((process_tuple[0], process_tuple[1]))
 
-        # Recreating the instance
-        self.create()
+            # Obtain the process information
+            proc_name, proc_obj = self.processes.popitem(last=False)
+
+            # Check if process was successful and complete. If yes, save it in the record and get the next process
+            if not proc_obj.has_failed() and proc_obj.complete:
+                completed_processes[proc_name] = proc_obj
+                continue
+
+            # adding to the checkpoint queue since we're past a checkpoint marker
+            if add_to_checkpoint_queue:
+                checkpoint_queue.append((proc_name, proc_obj))
+
+                # if a process hasn't been completed, a process may have failed before the checkpoint
+                # so we need to add all those to the list to be run
+                fail_to_checkpoint = True
+
+            else:
+                commands_to_run.append((proc_name, proc_obj))
+
+            # hit a checkpoint marker, start adding to the checkpoint_queue after this process
+            if proc_name in checkpoint_commands:
+                if fail_to_checkpoint:
+                    if cleanup_output:
+                        self.__remove_wrk_out_dir()
+
+                    # add all the commands in the checkpoint queue to commands to run
+                    commands_to_run.extend(checkpoint_queue)
+
+                # Obtain the cleanup status of the current checkpoint
+                cleanup_output = [d[1] for d in self.checkpoints if d[0] == proc_name][0]
+                logging.debug("CLEAR OUTPUT IS: %s FOR process %s" % (str(cleanup_output), str(proc_name)))
+
+                # clear the list if we run into a new checkpoint command
+                checkpoint_queue = list()
+                add_to_checkpoint_queue = True
+
+        # still have processes in the checkpoint queue
+        if len(checkpoint_queue) > 0:
+            if fail_to_checkpoint:
+                if cleanup_output:
+                    self.__remove_wrk_out_dir()
+
+                # add all the commands in the checkpoint queue to commands to run
+                commands_to_run.extend(checkpoint_queue)
+
+        # Readding the completed tasks to the list
+        self.processes = completed_processes
+
+        logging.debug("Commands to be rerun: (%s) " % str([i[0] for i in commands_to_run])) # log names of commands
+
+        if not self.is_preemptible: # Recreating the instance as standard instance
+            self.create()
 
         # Rerunning all the commands
         if len(commands_to_run):
@@ -83,43 +189,39 @@ class PreemptibleInstance(Instance):
     def get_runtime(self):
         # Compute total runtime across all resets
         # Return 0 if instance hasn't started yet
-        if self.start_time is None:
-            return 0
 
-        # Instance is still running so register runtime since last start/restart
-        elif self.stop_time is None or self.stop_time < self.start_time:
-            runtime = time.time() - self.start_time
+        # Obtain the current instance initial runtime
+        runtime = super(PreemptibleInstance, self).get_runtime()
 
-        # Instance has been stopped
-        else:
-            runtime = self.stop_time - self.start_time
+        # Add previous costs from reset history
+        for price, start, end in self.reset_history:
 
-        # Add previous runtimes from restart history
-        for record in self.cost_history:
-            end = record[2] if record[2] is not None else 0
-            start = record[1] if record[1] is not None else 0
+            # Set variables to 0 if any of them are None
+            start = start or 0
+            end = end or 0
+
+            # Increment the runtime
             runtime += end - start
+
         return runtime
 
     def compute_cost(self):
         # Compute total cost across all resets
-        cost = 0
-        if self.start_time is None:
-            return 0
+        cost = super(PreemptibleInstance, self).get_runtime() * self.price
 
-        elif self.stop_time is None or self.stop_time < self.start_time:
-            cost = (time.time() - self.start_time) * self.price
+        # Add previous costs from reset history
+        for price, start, end in self.reset_history:
 
-        else:
-            cost = (self.stop_time - self.start_time) * self.price
+            # Set variables to 0 if any of them are None
+            price = price or 0
+            start = start or 0
+            end = end or 0
 
-        for record in self.cost_history:
-            end = record[2] if record[2] is not None else 0
-            start = record[1] if record[1] is not None else 0
-            price = record[0] if record[0] is not None else 0
-            cost += (end-start) * price
+            # Increment the total cost
+            cost += (end - start) * price
 
-        return cost/3600
+        # The price is per hour not per second
+        return cost / 3600
 
     def handle_failure(self, proc_name, proc_obj):
 
@@ -187,7 +289,6 @@ class PreemptibleInstance(Instance):
             elif "destroy" not in self.processes:
                 needs_reset = True
 
-
         # Reset instance if its been destroyed/disappeared unexpectedly (i.e. preemption)
         if needs_reset and self.is_preemptible:
             logging.warning("(%s) Instance preempted! Resetting..." % self.name)
@@ -240,7 +341,8 @@ class PreemptibleInstance(Instance):
             if self.creation_resets < self.default_num_cmd_retries:
                 logging.debug("(%s) Create took more than 10 minutes! Resetting instance!" % self.name)
                 self.creation_resets += 1
-                self.reset()
+                self.stop()
+                self.start()
 
             # Throw error if instance still isn't ready after multiple tries
             else:
@@ -250,4 +352,40 @@ class PreemptibleInstance(Instance):
 
                 raise RuntimeError("(%s) Instance successfully created but never"
                                    " became available after %s resets!" %
-                                   self.name, self.default_num_cmd_retries)
+                                   (self.name, self.default_num_cmd_retries))
+
+        # Get and set external IP address if instance is ready
+        self.external_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
+
+    def __remove_wrk_out_dir(self):
+
+        logging.debug("(%s) CLEARING OUTPUT for checkpoint cleanup, clearing %s." % (self.name, self.wrk_out_dir))
+
+        # Generate the removal command. HAS to be 'sudo' to be able to remove files created by any user.
+        cmd = "sudo rm -rf %s*" % self.wrk_out_dir
+
+        # Clean the working output directory
+        self.run("cleanup_work_output", cmd)
+        self.wait_process("cleanup_work_output")
+
+    def __get_gcloud_start_cmd(self):
+        # Create base command
+        args = list()
+        args.append("gcloud compute instances start %s" % self.name)
+
+        # Specify the zone where instance will exist
+        args.append("--zone")
+        args.append(self.zone)
+
+        return " ".join(args)
+
+    def __get_gcloud_stop_cmd(self):
+        # Create base command
+        args = list()
+        args.append("gcloud compute instances stop %s" % self.name)
+
+        # Specify the zone where instance will exist
+        args.append("--zone")
+        args.append(self.zone)
+
+        return " ".join(args)

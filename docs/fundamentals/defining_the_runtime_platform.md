@@ -30,8 +30,8 @@ access your resources.
 
 ### Resource quota
 
-An important step when using CloudConductor is understanding your resource limits. CloudConductor is capable to run
-thousands of instances and allocate petabytes of storage, but your GCP account might not be able to run at this scale yet (especially if you just created your account).
+An important step when using CloudConductor is understanding your resource limits. CloudConductor is capable of running
+thousands of instances and allocating petabytes of storage, but your GCP account might not be able to run at this scale yet (especially if you just created your account).
 Also, as expected, the total processing cost will be higher when using many resources, but the results will come much faster.
 
 Please follow and read the information in this [link](https://cloud.google.com/compute/quotas).

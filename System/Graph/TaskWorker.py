@@ -124,7 +124,7 @@ class TaskWorker(Thread):
             logging.debug("(%s) Task workspace:\n%s" % (self.task.get_ID(), task_workspace.debug_string()))
 
             # Specify that module output files should be placed in task's working directory
-            self.module.set_output_dir(task_workspace.get_wrk_dir())
+            self.module.set_output_dir(task_workspace.get_wrk_out_dir())
 
             # Execute command if one exists
             self.set_status(self.LOADING)
@@ -173,6 +173,10 @@ class TaskWorker(Thread):
                 self.set_status(self.RUNNING)
                 self.cmd = self.module.update_command()
 
+                if not self.module.is_resumable:
+                    logging.debug("Module (%s) is not resumable adding checkpoint(s)!" % self.module.get_ID())
+                    self.proc.add_checkpoint() # mark a checkpoint after all the input is done
+
                 # Check if we received a list of commands or only one
                 if isinstance(self.cmd, list):
 
@@ -197,6 +201,9 @@ class TaskWorker(Thread):
                     # Post-process only last command output if necessary
                     self.module.process_cmd_output(out, err)
 
+                    if not self.module.is_resumable:
+                        self.proc.add_checkpoint(False) # mark a checkpoint after the command(s) have been run
+
                 else:
 
                     # Run the actual command
@@ -207,6 +214,9 @@ class TaskWorker(Thread):
 
                     # Post-process command output if necessary
                     self.module.process_cmd_output(out, err)
+
+                    if not self.module.is_resumable:
+                        self.proc.add_checkpoint(False) # mark a checkpoint after the command has been run
 
             # Set the status to finalized
             self.set_status(self.FINALIZING)

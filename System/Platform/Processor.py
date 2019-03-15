@@ -32,7 +32,8 @@ class Processor(object):
         self.log_dir    = kwargs.pop("log_dir", None)
 
         # Get name of working directory
-        self.wrk_dir    = kwargs.pop("wrk_dir", "/data/")
+        self.wrk_dir        = kwargs.pop("wrk_dir", "/data/")
+        self.wrk_out_dir    = kwargs.pop("wrk_out_dir", "/data/output")
 
         # Per hour price of processor
         self.price      = kwargs.pop("price",   0)
@@ -50,6 +51,7 @@ class Processor(object):
         # Lock for preventing further commands from being run on processor
         self.locked = False
         self.stopped = False
+        self.checkpoints = []
 
     def create(self):
         self.set_status(Processor.AVAILABLE)
@@ -164,9 +166,16 @@ class Processor(object):
     def set_wrk_dir(self, new_wrk_dir):
         self.wrk_dir = new_wrk_dir
 
+    def set_wrk_out_dir(self, new_wrk_out_dir):
+        if new_wrk_out_dir == "/" or new_wrk_out_dir is None:
+            self.wrk_out_dir = os.path.join(self.wrk_dir, "output")
+            logging.warning("(%s) Working output directory was not set or set to '/'. "
+                            "Automatically setting to '%s'." % (self.name, self.wrk_out_dir))
+        else:
+            self.wrk_out_dir = new_wrk_out_dir
+
     def set_start_time(self):
-        if self.start_time is None:
-            self.start_time = time.time()
+        self.start_time = time.time()
 
     def set_stop_time(self):
         self.stop_time = time.time()
@@ -179,12 +188,34 @@ class Processor(object):
         return self.name
 
     def get_runtime(self):
-        if self.start_time is None:
-            return 0
-        elif self.stop_time is None:
-            return time.time() - self.start_time
+
+        count = 0
+
+        # Only try to obtain a (correct) positive runtime 5 times
+        while count < 5:
+
+            count += 1
+
+            # Return 0 if instance hasn't started yet
+            if self.start_time is None:
+                runtime =  0
+
+            # Instance is still running so register runtime since last start/restart
+            elif self.stop_time is None or self.stop_time < self.start_time:
+                runtime = time.time() - self.start_time
+
+            # Instance has been stopped
+            else:
+                runtime = self.stop_time - self.start_time
+
+            # If (correct) positivie runtime, return
+            if runtime >= 0:
+                return runtime
+
         else:
-            return self.stop_time - self.start_time
+            # Could not obtain the runtime, so raise an exception
+            logging.error("(%s) Could not obtain the processor runtime" % self.name)
+            raise RuntimeError("(%s) Could not obtain the processor runtime" % self.name)
 
     def get_start_time(self):
         return self.start_time
@@ -202,6 +233,13 @@ class Processor(object):
         # Compute running cost of current task processor
         runtime = self.get_runtime()
         return self.price * runtime / 3600
+    
+    def add_checkpoint(self, clear_output=True):
+        """ Function for setting where processor should fall back to in case of a preemption. 
+            -clear_output: Flag to indicate that, in case of preemption, the task's output directory needs to be cleared.
+        """
+        self.checkpoints.append((next(reversed(self.processes)), clear_output))
+
 
     ############ Abstract methods
     @abc.abstractmethod

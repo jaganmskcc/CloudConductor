@@ -173,6 +173,7 @@ class ModuleExecutor(object):
 
         # Set processor wrk, log directories
         self.processor.set_wrk_dir(self.workspace.get_wrk_dir())
+        self.processor.set_wrk_out_dir(self.workspace.get_wrk_out_dir())
         self.processor.set_log_dir(self.workspace.get_wrk_log_dir())
 
         # Give everyone all the permissions on working directory

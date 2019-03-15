@@ -62,11 +62,13 @@ class Instance(Processor):
         # Adapt command for running on instance through gcloud ssh
         cmd = cmd.replace("'", "'\"'\"'")
 
-         # Get external IP address
-        ext_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
+        # Obtain the external IP in case is not set
+        if self.external_IP is None:
+            self.external_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
 
         cmd = "ssh -i ~/.ssh/google_compute_engine " \
-              "-o CheckHostIP=no -o StrictHostKeyChecking=no {0}@{1} -- '{2}'".format(getpass.getuser(), ext_IP, cmd)
+              "-o CheckHostIP=no -o StrictHostKeyChecking=no " \
+              "{0}@{1} -- '{2}'".format(getpass.getuser(), self.external_IP, cmd)
         return cmd
 
     def create(self):
@@ -157,12 +159,12 @@ class Instance(Processor):
             # If no errors thrown, try waiting on the process again
             return self.wait_process(proc_name)
 
-        if proc_name == "create":
+        if proc_name in ["create", "start"]:
             # Set start time
             self.set_start_time()
 
         # Set status to 'OFF' if destroy is True
-        elif proc_name == "destroy":
+        elif proc_name in ["destroy", "stop"]:
             # Set the stop time
             self.set_stop_time()
 
@@ -271,6 +273,9 @@ class Instance(Processor):
                                    " became available after multiple tries!" %
                                    self.name)
 
+        # Get and set external IP address if instance is ready
+        self.external_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
+
     def raise_error(self, proc_name, proc_obj):
         # Log failure to debug logger if quiet failure
         stdout_msg, stderr_msg = proc_obj.get_output()
@@ -354,6 +359,8 @@ class Instance(Processor):
         try:
             data = GoogleCloudHelper.describe(self.name, self.zone)
 
+            logging.debug("(%s) Instance Status: %s" % (self.name, data["status"]))
+
         # Catch error related to instance not existing
         except GoogleResourceNotFound:
             logging.error("(%s) Cannot poll startup script! Instance either was removed or was never created!" % self.name)
@@ -391,7 +398,7 @@ class Instance(Processor):
         args = list()
         args.append("gcloud compute instances create %s" % self.name)
 
-        # Specify the zone where instance will exits
+        # Specify the zone where instance will exist
         args.append("--zone")
         args.append(self.zone)
 
@@ -440,9 +447,13 @@ class Instance(Processor):
             args.append(self.instance_type)
 
         # Add metadata to run base Google startup-script
-        startup_script_location = "System/Platform/Google/GoogleStartupScript.sh"
-        args.append("--metadata-from-file")
-        args.append("startup-script=%s" % startup_script_location)
+        startup_script = """#!/usr/bin/env bash
+
+# Signal that instance is fully initialized
+gcloud --quiet compute instances add-metadata %s --metadata READY=TRUE --zone %s
+""" % (self.name, self.zone)
+        args.append("--metadata")
+        args.append("startup-script='%s'" % startup_script)
         return " ".join(args)
 
     def __get_gcloud_destroy_cmd(self):
