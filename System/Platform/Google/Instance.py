@@ -66,6 +66,8 @@ class Instance(Processor):
         if self.external_IP is None:
             self.external_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
 
+        logging.debug("(%s) Using the following IP address: %s" % (self.name, self.external_IP))
+
         cmd = "ssh -i ~/.ssh/google_compute_engine " \
               "-o CheckHostIP=no -o StrictHostKeyChecking=no " \
               "{0}@{1} -- '{2}'".format(getpass.getuser(), self.external_IP, cmd)
@@ -141,10 +143,13 @@ class Instance(Processor):
 
         # Return immediately if process has already been set to complete
         if proc_obj.is_complete():
+            logging.debug("Output is %s\nErr: %s" % proc_obj.get_output())
             return proc_obj.get_output()
 
         # Wait for process to finish
         out, err = proc_obj.communicate()
+
+        logging.debug("Output is %s\nErr: %s" % (out,err))
 
         # Set process to complete
         proc_obj.set_complete()
@@ -359,18 +364,24 @@ class Instance(Processor):
         try:
             data = GoogleCloudHelper.describe(self.name, self.zone)
 
-            logging.debug("(%s) Instance Status: %s" % (self.name, data["status"]))
+            # Check to see if "READY" has been added to instance metadata indicating startup-script has complete
+            complete = False
+            for item in data["metadata"]["items"]:
+                if item["key"] == "READY":
+                    complete = True
+                    break
+
+            import json
+
+            logging.debug("(%s) Checking startup script => Whole instance metadata: \n%s" %
+                          (self.name, json.dumps(data, indent=4)))
+
+            return complete
 
         # Catch error related to instance not existing
         except GoogleResourceNotFound:
             logging.error("(%s) Cannot poll startup script! Instance either was removed or was never created!" % self.name)
             return False
-
-        # Check to see if "READY" has been added to instance metadata indicating startup-script has complete
-        for item in data["metadata"]["items"]:
-            if item["key"] == "READY":
-                return True
-        return False
 
     def __configure_SSH(self, max_connections=500, log=False):
 

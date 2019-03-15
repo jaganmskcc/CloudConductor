@@ -289,6 +289,8 @@ class PreemptibleInstance(Instance):
             elif "destroy" not in self.processes:
                 needs_reset = True
 
+        logging.debug("(%s) Curr_status, can_retry, needs_reset are: %s, %s, %s" % (self.name, curr_status, can_retry, needs_reset))
+
         # Reset instance if its been destroyed/disappeared unexpectedly (i.e. preemption)
         if needs_reset and self.is_preemptible:
             logging.warning("(%s) Instance preempted! Resetting..." % self.name)
