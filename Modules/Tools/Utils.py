@@ -611,7 +611,7 @@ class GetDemuxFASTQ(Module):
         # Check if assay type to keep is available
         if keep_type not in assay_type:
             logging.error("Provided assay type is not available. The available assay types are RNA and DNA.")
-            raise NotImplemented("Provided assay type is not available. The available assay types are RNA and DNA.")
+            raise NotImplementedError("Provided assay type is not available. The available assay types are RNA and DNA.")
 
         # Placeholder list to keep the respective R1 and R2
         keep_R1 = []
