@@ -596,7 +596,7 @@ class GetDemuxFASTQ(Module):
         R1 = self.get_argument("R1")
         R2 = self.get_argument("R2")
         assay_type = self.get_argument("assay_type")
-        keep_type = self.get_argument("keep_assay_type")
+        keep_type = self.get_argument("keep_assay_type").lower()
 
         # make sure the R1 is a list
         if not isinstance(R1, list):
@@ -607,6 +607,9 @@ class GetDemuxFASTQ(Module):
         if not isinstance(R2, list):
             logging.error("Provided R2 is not a list. Please make sure you provide a list of R2.")
             raise TypeError("Provided R2 is not a list. Please make sure you provide a list of R2.")
+
+        # change the case for available assay type
+        assay_type = [_el.lower() for _el in assay_type]
 
         # Check if assay type to keep is available
         if keep_type not in assay_type:
