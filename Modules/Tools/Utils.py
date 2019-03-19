@@ -601,17 +601,17 @@ class GetDemuxFASTQ(Module):
         # make sure the R1 is a list
         if not isinstance(R1, list):
             logging.error("Provided R1 is not a list. Please make sure you provide a list of R1.")
-            raise TypeError
+            raise TypeError("Provided R1 is not a list. Please make sure you provide a list of R1.")
 
         # make sure the R1 is a list
         if not isinstance(R2, list):
             logging.error("Provided R2 is not a list. Please make sure you provide a list of R2.")
-            raise TypeError
+            raise TypeError("Provided R2 is not a list. Please make sure you provide a list of R2.")
 
         # Check if assay type to keep is available
         if keep_type not in assay_type:
             logging.error("Provided assay type is not available. The available assay types are RNA and DNA.")
-            raise NotImplemented
+            raise NotImplemented("Provided assay type is not available. The available assay types are RNA and DNA.")
 
         # Placeholder list to keep the respective R1 and R2
         keep_R1 = []
