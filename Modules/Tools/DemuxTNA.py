@@ -5,14 +5,13 @@ from Modules import Module
 class DemuxTNA (Module):
     def __init__(self, module_id, is_docker = False):
         super(DemuxTNA, self).__init__(module_id, is_docker)
-        self.output_keys = ["R1", "R2", "demux_stats"]
+        self.output_keys = ["R1", "R2", "demux_stats", "assay_type"]
 
     def define_input(self):
         self.add_argument("sample_name",    is_required=True)
         self.add_argument("R1",             is_required=True)
         self.add_argument("R2",             is_required=True)
-        self.add_argument("assay_to_keep",  is_required=True)
-        self.add_argument("barcodes",        is_required=True, default_value=["AGTCGACATG,TCGACATG"])
+        self.add_argument("barcodes",       is_required=True)
         self.add_argument("nr_cpus",        is_required=True, default_value=2)
         self.add_argument("mem",            is_required=True, default_value=8)
 
@@ -26,18 +25,27 @@ class DemuxTNA (Module):
 
         sample_name = self.get_argument("sample_name")
 
-        if self.get_argument("assay_to_keep") == "RNA":
-            r1 = os.path.join(self.get_output_dir(), "{0}.RNA.R1.fastq.gz".format(sample_name))
-            r2 = os.path.join(self.get_output_dir(), "{0}.RNA.R2.fastq.gz".format(sample_name))
-        else:
-            r1 = os.path.join(self.get_output_dir(), "{0}.non-RNA.R1.fastq.gz".format(sample_name))
-            r2 = os.path.join(self.get_output_dir(), "{0}.non-RNA.R2.fastq.gz".format(sample_name))
+        # Create list of R1 files
+        R1 = [
+            os.path.join(self.get_output_dir(), "{0}.RNA.R1.fastq.gz".format(sample_name)),
+            os.path.join(self.get_output_dir(), "{0}.non-RNA.R1.fastq.gz".format(sample_name))
+        ]
+        self.add_output("R1", R1, is_path=False)
 
+        # Create list of R2 files
+        R2 = [
+            os.path.join(self.get_output_dir(), "{0}.RNA.R2.fastq.gz".format(sample_name)),
+            os.path.join(self.get_output_dir(), "{0}.non-RNA.R2.fastq.gz".format(sample_name))
+        ]
+        self.add_output("R2", R2, is_path=False)
+
+        # Create name for barcode stat file
         demux_stats = os.path.join(self.get_output_dir(), "all_barcode_stats.csv")
-
-        self.add_output("R1", r1)
-        self.add_output("R2", r2)
         self.add_output("demux_stats", demux_stats)
+
+        # Create list of assay types
+        assay_type = ["rna", "dna"]
+        self.add_output("assay_type", assay_type, is_path=False)
 
     def define_command(self):
 
