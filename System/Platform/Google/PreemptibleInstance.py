@@ -178,17 +178,16 @@ class PreemptibleInstance(Instance):
                 if proc_obj.needs_rerun():
                     self.run(job_name=proc_name,
                              cmd=proc_obj.get_command(),
-                             num_retries=proc_obj.get_num_retries(),
                              docker_image=proc_obj.get_docker_image(),
                              quiet_failure=proc_obj.is_quiet())
                     self.wait_process(proc_name)
             else:
                 self.run(job_name=proc_name,
                          cmd=proc_obj.get_command(),
-                         num_retries=proc_obj.get_num_retries(),
                          docker_image=proc_obj.get_docker_image(),
                          quiet_failure=proc_obj.is_quiet())
                 self.wait_process(proc_name)
+
     def get_runtime(self):
         # Compute total runtime across all resets
         # Return 0 if instance hasn't started yet
