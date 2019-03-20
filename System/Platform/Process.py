@@ -15,6 +15,9 @@ class Process(sp.Popen):
         self.out            = ""
         self.err            = ""
 
+        # Set rerunning status
+        self.to_rerun       = False
+
     def is_complete(self):
         return self.complete
 
@@ -53,3 +56,9 @@ class Process(sp.Popen):
 
     def do_log_success(self):
         return self.log_success
+
+    def set_to_rerun(self):
+        self.to_rerun = True
+
+    def needs_rerun(self):
+        return self.to_rerun

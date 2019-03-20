@@ -112,7 +112,6 @@ class PreemptibleInstance(Instance):
         self.processes.pop("stop", None)
 
         # Identifying which process(es) need to be recalled
-        completed_processes = OrderedDict()
         commands_to_run = list()
         checkpoint_queue = list()
         add_to_checkpoint_queue = False
@@ -120,26 +119,22 @@ class PreemptibleInstance(Instance):
         checkpoint_commands = [i[0] for i in self.checkpoints] # create array of just the commands
         logging.debug("CHECKPOINT COMMANDS: %s" % str(checkpoint_commands))
         cleanup_output = False
-        while len(self.processes):
+        for proc_name, proc_obj in self.processes.items():
 
-            # Obtain the process information
-            proc_name, proc_obj = self.processes.popitem(last=False)
-
-            # Check if process was successful and complete. If yes, save it in the record and get the next process
+            # Skip processes that were successful and complete
             if not proc_obj.has_failed() and proc_obj.complete:
-                completed_processes[proc_name] = proc_obj
                 continue
 
             # adding to the checkpoint queue since we're past a checkpoint marker
             if add_to_checkpoint_queue:
-                checkpoint_queue.append((proc_name, proc_obj))
+                checkpoint_queue.append(proc_name)
 
                 # if a process hasn't been completed, a process may have failed before the checkpoint
                 # so we need to add all those to the list to be run
                 fail_to_checkpoint = True
 
             else:
-                commands_to_run.append((proc_name, proc_obj))
+                commands_to_run.append(proc_name)
 
             # hit a checkpoint marker, start adding to the checkpoint_queue after this process
             if proc_name in checkpoint_commands:
@@ -167,25 +162,33 @@ class PreemptibleInstance(Instance):
                 # add all the commands in the checkpoint queue to commands to run
                 commands_to_run.extend(checkpoint_queue)
 
-        # Readding the completed tasks to the list
-        self.processes = completed_processes
+        # Set commands that need to be rerun to rerun mode
+        for proc_to_rerun in commands_to_run:
+            self.processes[proc_to_rerun].set_to_rerun()
 
-        logging.debug("Commands to be rerun: (%s) " % str([i[0] for i in commands_to_run])) # log names of commands
+        logging.debug("Commands to be rerun: (%s) " % str(
+            [proc_name for proc_name, proc_obj in self.processes.items() if proc_obj.needs_rerun()])) # log names of commands
 
         if not self.is_preemptible: # Recreating the instance as standard instance
             self.create()
 
         # Rerunning all the commands
-        if len(commands_to_run):
-            while len(commands_to_run) != 0:
-                proc_name, proc_obj = commands_to_run.pop(0)
+        for proc_name, proc_obj in self.processes.items():
+            if self.is_preemptible:
+                if proc_obj.needs_rerun():
+                    self.run(job_name=proc_name,
+                             cmd=proc_obj.get_command(),
+                             num_retries=proc_obj.get_num_retries(),
+                             docker_image=proc_obj.get_docker_image(),
+                             quiet_failure=proc_obj.is_quiet())
+                    self.wait_process(proc_name)
+            else:
                 self.run(job_name=proc_name,
                          cmd=proc_obj.get_command(),
                          num_retries=proc_obj.get_num_retries(),
                          docker_image=proc_obj.get_docker_image(),
                          quiet_failure=proc_obj.is_quiet())
                 self.wait_process(proc_name)
-
     def get_runtime(self):
         # Compute total runtime across all resets
         # Return 0 if instance hasn't started yet
@@ -288,6 +291,8 @@ class PreemptibleInstance(Instance):
             # Reset instance and re-run command if command failed and no sure why instance doesn't exist (e.g. preemption, gets manually deleted)
             elif "destroy" not in self.processes:
                 needs_reset = True
+
+        logging.debug("(%s) Curr_status, can_retry, needs_reset are: %s, %s, %s" % (self.name, curr_status, can_retry, needs_reset))
 
         # Reset instance if its been destroyed/disappeared unexpectedly (i.e. preemption)
         if needs_reset and self.is_preemptible:
