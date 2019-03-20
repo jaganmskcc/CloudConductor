@@ -8,7 +8,7 @@ class ABCGCBClassifier(Module):
 
     def define_input(self):
         self.add_argument("sample_name",        is_required=True)
-        self.add_argument("genes_results",       is_required=True)
+        self.add_argument("annotated_expression_file",       is_required=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("classifier",         is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=2)
@@ -36,7 +36,7 @@ class ABCGCBClassifier(Module):
         # Get arguments
         sample          = self.get_argument("sample_name")
         ref             = self.get_argument("ref")
-        expression_file = self.get_argument("genes_results")
+        expression_file = self.get_argument("annotated_expression_file")
 
         # Get the classifier script or docker image name
         classifier      = self.get_argument("classifier")
