@@ -58,10 +58,17 @@ class Module(object):
             logging.error("In module %s, the output key '%s' is defined multiple time!" % (self.module_id, key))
             raise RuntimeError("Output key '%s' has been defined multiple times!" % key)
 
+        # Recursively convert all paths to GAPFile
+        def convert_to_gapfile(_id, _key, _value, **_kwargs):
+            if not isinstance(_value, list):
+                return GAPFile(_id, file_type=_key, path=_value, **_kwargs)
+            else:
+                return [convert_to_gapfile(_id, _key, _file, **_kwargs) for _file in _value]
+
         if is_path and not isinstance(value, GAPFile) and value is not None:
             # Convert paths to GAPFiles if they haven't already been converted
             file_id = "%s.%s" % (self.module_id, key)
-            value = GAPFile(file_id, file_type=key, path=value, **kwargs)
+            value = convert_to_gapfile(file_id, key, value, **kwargs)
 
         self.output[key] = value
 
