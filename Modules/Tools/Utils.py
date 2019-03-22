@@ -576,3 +576,63 @@ class ReplaceGVCFSampleName(Module):
         cmd = 'sed "s/{0}$/{1}/g" {2} > {3}'.format(sample_name, barcode, gvcf_in, gvcf_out)
 
         return cmd
+
+class GetDemuxFASTQ(Module):
+
+    def __init__(self, module_id, is_docker=False):
+        super(GetDemuxFASTQ, self).__init__(module_id, is_docker)
+        self.output_keys = ["R1", "R2"]
+
+    def define_input(self):
+        self.add_argument("R1",             is_required=True)
+        self.add_argument("R2",             is_required=True)
+        self.add_argument("assay_type",     is_required=True)
+        self.add_argument("keep_assay_type", is_required=True)
+        self.add_argument("nr_cpus",        is_required=True,   default_value=1)
+        self.add_argument("mem",            is_required=True,   default_value=1)
+
+    def define_output(self):
+        # Obtain arguments
+        R1 = self.get_argument("R1")
+        R2 = self.get_argument("R2")
+        assay_type = self.get_argument("assay_type")
+        keep_type = self.get_argument("keep_assay_type").lower()
+
+        # make sure the R1 is a list
+        if not isinstance(R1, list):
+            logging.error("Provided R1 is not a list. Please make sure you provide a list of R1.")
+            raise TypeError("Provided R1 is not a list. Please make sure you provide a list of R1.")
+
+        # make sure the R1 is a list
+        if not isinstance(R2, list):
+            logging.error("Provided R2 is not a list. Please make sure you provide a list of R2.")
+            raise TypeError("Provided R2 is not a list. Please make sure you provide a list of R2.")
+
+        # change the case for available assay type
+        assay_type = [_el.lower() for _el in assay_type]
+
+        # Check if assay type to keep is available
+        if keep_type not in assay_type:
+            logging.error("Provided assay type is not available. The available assay types are RNA and DNA.")
+            raise NotImplementedError("Provided assay type is not available. The available assay types are RNA and DNA.")
+
+        # Placeholder list to keep the respective R1 and R2
+        keep_R1 = []
+        keep_R2 = []
+
+        # Get correct R1 and R2 based on assay type
+        for r1_file, r2_file, _type in zip(R1, R2, assay_type):
+            if _type == keep_type:
+                keep_R1.append(r1_file)
+                keep_R2.append(r2_file)
+
+        # Add the first element of the list to ouput if the R1 and R2 is not a list, otherwise add the list
+        if len(keep_R1) == 1:
+            self.add_output(key="R1", value=keep_R1[0])
+            self.add_output(key="R2", value=keep_R2[0])
+        else:
+            self.add_output(key="R1", value=keep_R1)
+            self.add_output(key="R2", value=keep_R2)
+
+    def define_command(self):
+        return None
