@@ -30,14 +30,14 @@ class DemuxTNA (Module):
             os.path.join(self.get_output_dir(), "{0}.RNA.R1.fastq.gz".format(sample_name)),
             os.path.join(self.get_output_dir(), "{0}.non-RNA.R1.fastq.gz".format(sample_name))
         ]
-        self.add_output("R1", R1, is_path=False)
+        self.add_output("R1", R1)
 
         # Create list of R2 files
         R2 = [
             os.path.join(self.get_output_dir(), "{0}.RNA.R2.fastq.gz".format(sample_name)),
             os.path.join(self.get_output_dir(), "{0}.non-RNA.R2.fastq.gz".format(sample_name))
         ]
-        self.add_output("R2", R2, is_path=False)
+        self.add_output("R2", R2)
 
         # Create name for barcode stat file
         demux_stats = os.path.join(self.get_output_dir(), "all_barcode_stats.csv")
