@@ -631,8 +631,8 @@ class GetDemuxFASTQ(Module):
             self.add_output(key="R1", value=keep_R1[0])
             self.add_output(key="R2", value=keep_R2[0])
         else:
-            self.add_output(key="R1", value=keep_R1, is_path=False)
-            self.add_output(key="R2", value=keep_R2, is_path=False)
+            self.add_output(key="R1", value=keep_R1)
+            self.add_output(key="R2", value=keep_R2)
 
     def define_command(self):
         return None
