@@ -47,18 +47,18 @@ class BcftoolsIndex(Module):
     def define_output(self):
 
         vcf_gz = self.get_argument("vcf_gz")
-        self.add_output("vcf_csi", "{0}.gz.csi".format(vcf_gz))
+        self.add_output("vcf_csi", "{0}.csi".format(vcf_gz))
 
     def define_command(self):
         # Get input arguments
         vcf_gz      = self.get_argument("vcf_gz")
         bcftools    = self.get_argument("bcftools")
-        threads     = self.get_argument("num_cpus")
+        threads     = self.get_argument("nr_cpus")
 
         # Get output file for VCF index file
         vcf_csi     = self.get_output("vcf_csi")
 
-        cmd = "{0} index --threads {3} -f -o {2} {1} !LOG3!".format(bcftools, vcf_gz, vcf_csi, threads)
+        cmd = "{0} index --threads {3} -f -c -o {2} {1} !LOG3!".format(bcftools, vcf_gz, vcf_csi, threads)
 
         return cmd
 
