@@ -1,5 +1,31 @@
 from Modules import Splitter
 
+class VCFDistributor(Splitter):
+
+    def __init__(self, module_id, is_docker=False):
+        super(VCFDistributor, self).__init__(module_id, is_docker)
+        self.output_keys    = ["vcf"]
+
+    def define_input(self):
+        self.add_argument("vcf",            is_required=True)
+        self.add_argument("nr_cpus",        is_required=True,   default_value=1)
+        self.add_argument("mem",            is_required=True,   default_value=1)
+
+    def define_output(self):
+        vcfs = self.get_argument("vcf")
+
+        # Ensure that the VCFs are a list
+        if not isinstance(vcfs, list):
+            vcfs = [vcfs]
+
+        # Create the splits
+        for _id, _vcf in enumerate(vcfs):
+            self.make_split(split_id=str(_id))
+            self.add_output(split_id=str(_id), key="vcf", value=_vcf)
+
+    def define_command(self):
+        return None
+
 class VCFSplitter(Splitter):
 
     def __init__(self, module_id, is_docker=False):
