@@ -289,7 +289,7 @@ class Instance(Processor):
                 break
 
             # Check if ssh server is accessible. If not wait another cycle
-            if self.__can_ssh():
+            if self.check_ssh():
 
                 # Increase number of SSH connections
                 self.__configure_SSH()
@@ -384,7 +384,7 @@ class Instance(Processor):
 
             return Processor.OFF
 
-    def __can_ssh(self):
+    def check_ssh(self):
 
         # If the instance is off, the ssh is definitely not ready
         if self.external_IP is None:

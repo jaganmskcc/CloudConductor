@@ -317,6 +317,12 @@ class PreemptibleInstance(Instance):
                                                 stderr=sp.PIPE,
                                                 shell=True,
                                                 num_retries=proc_obj.get_num_retries() - 1)
+
+        # Check if the problem is that we cannot SSH in the instance
+        elif not self.check_ssh():
+            logging.warning("(%s) SSH connection cannot be established! Resetting..." % self.name)
+            self.reset()
+
         # Retry 'run' command
         elif can_retry:
             time.sleep(3)
