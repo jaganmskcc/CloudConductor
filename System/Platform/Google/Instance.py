@@ -149,6 +149,9 @@ class Instance(Processor):
         if wait:
             self.wait_process("destroy")
 
+        # Reset flag that we configured SSH
+        self.ssh_connections_increased = False
+
     def wait_process(self, proc_name):
         # Get process from process list
         proc_obj = self.processes[proc_name]
