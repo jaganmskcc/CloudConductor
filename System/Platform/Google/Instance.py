@@ -269,7 +269,7 @@ class Instance(Processor):
         cycle_count = 0
 
         # Waiting for 10 minutes for instance to be SSH-able
-        while cycle_count < 120:
+        while cycle_count < 40:
 
             # Increment the cycle count
             cycle_count += 1
@@ -280,7 +280,7 @@ class Instance(Processor):
                 raise RuntimeError("(%s) Instance locked while waiting for creation!" % self.name)
 
             # Wait for 5 seconds before checking the status again
-            time.sleep(5)
+            time.sleep(15)
 
             # If instance is not creating, it means it does not exist on the cloud or it's stopped
             if self.get_status() not in [Processor.CREATING, Processor.AVAILABLE]:
