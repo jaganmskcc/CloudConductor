@@ -286,14 +286,16 @@ class Instance(Processor):
                 break
 
             # Check if ssh server is accessible. If not wait another cycle
-            if not self.__can_ssh():
-                continue
+            if self.__can_ssh():
 
-            # Increase number of SSH connections
-            self.__configure_SSH()
+                # Increase number of SSH connections
+                self.__configure_SSH()
 
-            # We do not need to recreate it
-            needs_recreate = False
+                # We do not need to recreate it
+                needs_recreate = False
+
+                # Break the loop as we finished configuring the SSH
+                break
 
         # Check if it needs resetting
         if needs_recreate:
