@@ -359,7 +359,7 @@ class Instance(Processor):
             data = GoogleCloudHelper.describe(self.name, self.zone)
 
             # Update the external IP address
-            self.external_IP = data["networkInterfaces"]["accessConfigs"][0].get("natIP", None)
+            self.external_IP = data["networkInterfaces"][0]["accessConfigs"][0].get("natIP", None)
 
             # Return the status accordingly
             if data["status"] in ["TERMINATED", "STOPPING"]:
