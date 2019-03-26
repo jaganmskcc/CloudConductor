@@ -259,6 +259,8 @@ class PreemptibleInstance(Instance):
         if self.is_locked() and proc_name != "destroy":
             self.raise_error(proc_name, proc_obj)
 
+        # Update the status from the cloud and get the new status
+        self.update_status()
         curr_status = self.get_status()
 
         # Re-run any command (except create) if instance is up and cmd can be retried

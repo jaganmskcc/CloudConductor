@@ -53,11 +53,58 @@ class Instance(Processor):
         # Initialize extenal IP
         self.external_IP = None
 
-    def get_status(self):
-        with self.status_lock:
-            self.status = self.__sync_status()
-            logging.debug("(%s) Status: %s" % (self.name, self.status))
-            return self.status
+    def update_status(self):
+
+        # Initialize the number of retries
+        retries = 0
+
+        # Get status from the cloud
+        while True:
+
+            try:
+                # Obtain the instance information
+                data = GoogleCloudHelper.describe(self.name, self.zone)
+
+                # Update the external IP address
+                self.external_IP = data["networkInterfaces"][0]["accessConfigs"][0].get("natIP", None)
+
+                # Set the status accordingly
+                if data["status"] in ["TERMINATED", "STOPPING"]:
+                    self.set_status(Processor.DESTROYING)
+                    break
+
+                elif data["status"] in ["PROVISIONING", "STAGING"]:
+                    self.set_status(Processor.CREATING)
+                    break
+
+                elif data["status"] == "RUNNING":
+                    self.set_status(Processor.AVAILABLE if self.ssh_ready else Processor.CREATING)
+                    break
+
+                else:
+                    raise RuntimeError("Unkown Google Compute Engine instance status: %s!" % data["status"])
+
+            # If no resource found, then the processor was manually deleted by someone
+            except GoogleResourceNotFound:
+
+                # Update the external IP address
+                self.external_IP = None
+
+                # Set the status to OFF
+                self.set_status(Processor.OFF)
+                break
+
+            # For any other error, retry again
+            except BaseException:
+
+                # Raise an error when retried the default number of retries
+                if retries >= self.default_num_cmd_retries:
+                    raise
+
+                # Sleep for 5 seconds and retry again
+                else:
+                    time.sleep(5)
+                    retries += 1
 
     def adapt_cmd(self, cmd):
         # Adapt command for running on instance through gcloud ssh
@@ -65,7 +112,7 @@ class Instance(Processor):
 
         # Obtain the external IP in case is not set
         if self.external_IP is None:
-            self.get_status()
+            self.update_status()
 
         logging.debug("(%s) Using the following IP address: %s" % (self.name, self.external_IP))
 
@@ -211,6 +258,8 @@ class Instance(Processor):
         if self.is_locked() and proc_name != "destroy":
             self.raise_error(proc_name, proc_obj)
 
+        # First update the status from the cloud and then get the new status
+        self.update_status()
         curr_status = self.get_status()
 
         if curr_status == Processor.OFF:
@@ -282,6 +331,9 @@ class Instance(Processor):
             # Wait for 5 seconds before checking the status again
             time.sleep(15)
 
+            # Update the status from the cloud
+            self.update_status()
+
             # If instance is not creating, it means it does not exist on the cloud or it's stopped
             if self.get_status() not in [Processor.CREATING, Processor.AVAILABLE]:
                 logging.debug("(%s) Instance has been shut down or removed intentionally. "
@@ -341,48 +393,6 @@ class Instance(Processor):
         while not self.is_locked() and count < sleep_time:
             time.sleep(1)
             count += 1
-
-    def __sync_status(self):
-        # Try to return current instance status
-        retries = self.default_num_cmd_retries
-        while True:
-            try:
-                return self.__poll_status()
-            except BaseException, e:
-                if retries == 0:
-                    logging.error("(%s) Unable to get instance status!")
-                    if e.message != "":
-                        logging.error("Received the following error:\n%s" % e.message)
-                    raise
-                retries -= 1
-                time.sleep(5)
-
-    def __poll_status(self):
-
-        try:
-            # Obtain the instance information
-            data = GoogleCloudHelper.describe(self.name, self.zone)
-
-            # Update the external IP address
-            self.external_IP = data["networkInterfaces"][0]["accessConfigs"][0].get("natIP", None)
-
-            # Return the status accordingly
-            if data["status"] in ["TERMINATED", "STOPPING"]:
-                return Processor.DESTROYING
-
-            elif data["status"] in ["PROVISIONING", "STAGING"]:
-                return Processor.CREATING
-
-            elif data["status"] == "RUNNING":
-                return Processor.AVAILABLE if self.ssh_ready else Processor.CREATING
-
-        # If no resource found, then the processor was manually deleted by someone
-        except GoogleResourceNotFound:
-
-            # Update the external IP address
-            self.external_IP = None
-
-            return Processor.OFF
 
     def check_ssh(self):
 
