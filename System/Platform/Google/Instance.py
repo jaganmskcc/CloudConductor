@@ -40,8 +40,9 @@ class Instance(Processor):
         self.price = 0
         self.cost = 0
 
-        # Flag for whether startup script has completed running
-        self.startup_script_complete = False
+        # Initialize the SSH status
+        self.ssh_connections_increased = False
+        self.ssh_ready = False
 
         # Number of times creation has been reset
         self.creation_resets = 0
@@ -64,7 +65,7 @@ class Instance(Processor):
 
         # Obtain the external IP in case is not set
         if self.external_IP is None:
-            self.external_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
+            self.get_status()
 
         logging.debug("(%s) Using the following IP address: %s" % (self.name, self.external_IP))
 
@@ -110,14 +111,25 @@ class Instance(Processor):
                                            num_retries=self.default_num_cmd_retries)
         self.wait_process("create")
 
-        # Wait for startup script to completely finish
-        logging.debug("(%s) Waiting for instance startup-script completion..." % self.name)
-        self.startup_script_complete = False
+        # Wait for instance to be accessible through SSH
+        logging.debug("(%s) Waiting for instance to be accessible" % self.name)
         self.wait_until_ready()
 
-        # Increase number of SSH connections
-        self.__configure_SSH()
-        logging.debug("(%s) Instance startup complete! %s Now live and ready to run commands!" % (self.name, self.name))
+    def recreate(self):
+
+        if self.creation_resets < self.default_num_cmd_retries:
+            self.creation_resets += 1
+            self.destroy()
+            self.create()
+
+        else:
+            logging.debug("(%s) Instance successfully created but "
+                          "never became available after %s resets!" %
+                          (self.name, self.default_num_cmd_retries))
+
+            raise RuntimeError("(%s) Instance successfully created but never"
+                               " became available after multiple tries!" %
+                               self.name)
 
     def destroy(self, wait=True):
 
@@ -244,42 +256,52 @@ class Instance(Processor):
             self.raise_error(proc_name, proc_obj)
 
     def wait_until_ready(self):
-        # Wait until startup-script has completed on instance
-        # This signifies that the instance has initialized ssh and the instance environment is finalized
-        cycle_count = 1
-        # Waiting for 10 minutes for instance metadata to be set to READY
-        while cycle_count < 10 and not self.startup_script_complete and not self.is_locked():
-            time.sleep(60)
+        # Wait until instance can be SSHed
+
+        # Initialize the SSH status to False and assume that the instance will need to be recreated
+        self.ssh_ready = False
+        needs_recreate = True
+
+        # Initializing the cycle count
+        cycle_count = 0
+
+        # Waiting for 10 minutes for instance to be SSH-able
+        while cycle_count < 120:
+
+            # Increment the cycle count
             cycle_count += 1
-            self.startup_script_complete = self.poll_startup_script()
 
-        # Throw error if instance locking caused loop to exit
-        if self.is_locked():
-            logging.debug("(%s) Instance locked while waiting for creation!" % self.name)
-            raise RuntimeError("(%s) Instance locked while waiting for creation!" % self.name)
+            # Raise an error if the instance gets locked
+            if self.is_locked():
+                logging.debug("(%s) Instance locked while waiting for creation!" % self.name)
+                raise RuntimeError("(%s) Instance locked while waiting for creation!" % self.name)
 
-        # Reset if instance not initialized within the alloted timeframe
-        elif not self.startup_script_complete:
+            # Wait for 5 seconds before checking the status again
+            time.sleep(5)
 
-            # Try creating again if there are still resets
-            if self.creation_resets < self.default_num_cmd_retries:
-                logging.debug("(%s) Create took more than 10 minutes! Resetting instance!" % self.name)
-                self.creation_resets += 1
-                self.destroy()
-                self.create()
+            # If instance is not creating, it means it does not exist on the cloud or it's stopped
+            if self.get_status() not in [Processor.CREATING, Processor.AVAILABLE]:
+                logging.debug("(%s) Instance has been shut down or removed intentionally. "
+                              "Resetting instance!" % self.name)
+                break
 
-            # Throw error if instance still isn't ready after multiple tries
-            else:
-                logging.debug("(%s) Instance successfully created but "
-                              "never became available after %s resets!" %
-                              (self.name, self.default_num_cmd_retries))
+            # Check if ssh server is accessible. If not wait another cycle
+            if not self.__can_ssh():
+                continue
 
-                raise RuntimeError("(%s) Instance successfully created but never"
-                                   " became available after multiple tries!" %
-                                   self.name)
+            # Increase number of SSH connections
+            self.__configure_SSH()
 
-        # Get and set external IP address if instance is ready
-        self.external_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
+            # We do not need to recreate it
+            needs_recreate = False
+
+        # Check if it needs resetting
+        if needs_recreate:
+            self.recreate()
+
+        # If we arrived at this point, then we are all set!
+        self.ssh_ready = True
+        logging.debug("(%s) Instance can be accessed through SSH!" % self.name)
 
     def raise_error(self, proc_name, proc_obj):
         # Log failure to debug logger if quiet failure
@@ -332,18 +354,12 @@ class Instance(Processor):
 
     def __poll_status(self):
 
-        # We will consider that the startup script was not complete
-        self.startup_script_complete = False
-
         try:
-
             # Obtain the instance information
             data = GoogleCloudHelper.describe(self.name, self.zone)
 
-            # Check if the instance startup script was complete
-            for item in data["metadata"]["items"]:
-                if item["key"] == "READY":
-                    self.startup_script_complete = True
+            # Update the external IP address
+            self.external_IP = data["networkInterfaces"]["accessConfigs"][0].get("natIP", None)
 
             # Return the status accordingly
             if data["status"] in ["TERMINATED", "STOPPING"]:
@@ -353,37 +369,41 @@ class Instance(Processor):
                 return Processor.CREATING
 
             elif data["status"] == "RUNNING":
-                return Processor.AVAILABLE if self.startup_script_complete else Processor.CREATING
+                return Processor.AVAILABLE if self.ssh_ready else Processor.CREATING
 
         # If no resource found, then the processor was manually deleted by someone
         except GoogleResourceNotFound:
+
+            # Update the external IP address
+            self.external_IP = None
+
             return Processor.OFF
 
-    def poll_startup_script(self):
-        # Return true if instance is currently available for running commands
-        try:
-            data = GoogleCloudHelper.describe(self.name, self.zone)
+    def __can_ssh(self):
 
-            # Check to see if "READY" has been added to instance metadata indicating startup-script has complete
-            complete = False
-            for item in data["metadata"]["items"]:
-                if item["key"] == "READY":
-                    complete = True
-                    break
-
-            import json
-
-            logging.debug("(%s) Checking startup script => Whole instance metadata: \n%s" %
-                          (self.name, json.dumps(data, indent=4)))
-
-            return complete
-
-        # Catch error related to instance not existing
-        except GoogleResourceNotFound:
-            logging.error("(%s) Cannot poll startup script! Instance either was removed or was never created!" % self.name)
+        # If the instance is off, the ssh is definitely not ready
+        if self.external_IP is None:
             return False
 
+        # Generate the command to run
+        cmd = "nc -w 1 {0} 22".format(self.external_IP)
+
+        # Run the command
+        proc = sp.Popen(cmd, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
+        out, err = proc.communicate()
+
+        # If any error occured, then the ssh is not ready
+        if err:
+            return False
+
+        # Otherwise, return only if there is ssh in the received header
+        return "ssh" in out.lower()
+
     def __configure_SSH(self, max_connections=500, log=False):
+
+        # Don't try to reincrease the SSH connection
+        if self.ssh_connections_increased:
+            return
 
         # Increase the number of concurrent SSH connections
         logging.info(
@@ -403,6 +423,9 @@ class Instance(Processor):
             cmd = "sudo service sshd restart"
         self.run("restartSSH", cmd)
         self.wait_process("restartSSH")
+
+        # Set instance as connections already increased
+        self.ssh_connections_increased = True
 
     def __get_gcloud_create_cmd(self):
         # Create base command
@@ -457,14 +480,6 @@ class Instance(Processor):
             args.append("--machine-type")
             args.append(self.instance_type)
 
-        # Add metadata to run base Google startup-script
-        startup_script = """#!/usr/bin/env bash
-
-# Signal that instance is fully initialized
-gcloud --quiet compute instances add-metadata %s --metadata READY=TRUE --zone %s
-""" % (self.name, self.zone)
-        args.append("--metadata")
-        args.append("startup-script='%s'" % startup_script)
         return " ".join(args)
 
     def __get_gcloud_destroy_cmd(self):

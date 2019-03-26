@@ -24,6 +24,21 @@ class PreemptibleInstance(Instance):
         # Stack for determining costs across resets
         self.reset_history = []
 
+    def recreate(self):
+        if self.creation_resets < self.default_num_cmd_retries:
+            self.creation_resets += 1
+            self.stop()
+            self.start()
+
+        else:
+            logging.debug("(%s) Instance successfully created but "
+                          "never became available after %s resets!" %
+                          (self.name, self.default_num_cmd_retries))
+
+            raise RuntimeError("(%s) Instance successfully created but never"
+                               " became available after multiple tries!" %
+                               self.name)
+
     def start(self):
 
         logging.info("(%s) Process 'start' started!" % self.name)
@@ -40,15 +55,11 @@ class PreemptibleInstance(Instance):
         # Wait for start to complete if requested
         self.wait_process("start")
 
-        # Wait for startup script to completely finish
-        logging.debug("(%s) Waiting for instance to finish starting up..." % self.name)
-        self.startup_script_complete = False
+        # Wait for instance to be accessible through SSH
+        logging.debug("(%s) Waiting for instance to be accessible" % self.name)
         self.wait_until_ready()
 
     def stop(self):
-
-        # Remove "READY" metadata key from instance that states that the startup script is complete
-        GoogleCloudHelper.remove_metadata(self.name, self.zone, ["READY"])
 
         logging.info("(%s) Process 'stop' started!" % self.name)
         cmd = self.__get_gcloud_stop_cmd()
@@ -88,10 +99,8 @@ class PreemptibleInstance(Instance):
 
         if self.is_preemptible: # still want to use a preemptible image, so, we don't have to recreate
 
-            # Actually ensure the instance is stopped, so the startup script can be relaunched
-            self.stop()
-
             # Restart the instance
+            self.stop()
             self.start()
 
             # Instance restart complete
@@ -322,44 +331,6 @@ class PreemptibleInstance(Instance):
         # Raise error if command failed, has no retries, and wasn't caused by preemption
         else:
             self.raise_error(proc_name, proc_obj)
-
-    def wait_until_ready(self):
-        # Wait until startup-script has completed on instance
-        # This signifies that the instance has initialized ssh and the instance environment is finalized
-        cycle_count = 1
-        # Waiting for 10 minutes for instance metadata to be set to READY
-        while cycle_count < 10 and not self.startup_script_complete and not self.is_locked():
-            time.sleep(60)
-            cycle_count += 1
-            self.startup_script_complete = self.poll_startup_script()
-
-        # Throw error if instance locking caused loop to exit
-        if self.is_locked():
-            logging.debug("(%s) Instance locked while waiting for creation!" % self.name)
-            raise RuntimeError("(%s) Instance locked while waiting for creation!" % self.name)
-
-        # Reset if instance not initialized within the alloted timeframe
-        elif not self.startup_script_complete:
-
-            # Try creating again if there are still resets
-            if self.creation_resets < self.default_num_cmd_retries:
-                logging.debug("(%s) Create took more than 10 minutes! Resetting instance!" % self.name)
-                self.creation_resets += 1
-                self.stop()
-                self.start()
-
-            # Throw error if instance still isn't ready after multiple tries
-            else:
-                logging.debug("(%s) Instance successfully created but "
-                              "never became available after %s resets!" %
-                              (self.name, self.default_num_cmd_retries))
-
-                raise RuntimeError("(%s) Instance successfully created but never"
-                                   " became available after %s resets!" %
-                                   (self.name, self.default_num_cmd_retries))
-
-        # Get and set external IP address if instance is ready
-        self.external_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
 
     def __remove_wrk_out_dir(self):
 
