@@ -328,7 +328,7 @@ class Instance(Processor):
                 logging.debug("(%s) Instance locked while waiting for creation!" % self.name)
                 raise RuntimeError("(%s) Instance locked while waiting for creation!" % self.name)
 
-            # Wait for 5 seconds before checking the status again
+            # Wait for 15 seconds before checking the status again
             time.sleep(15)
 
             # Update the status from the cloud
@@ -336,8 +336,7 @@ class Instance(Processor):
 
             # If instance is not creating, it means it does not exist on the cloud or it's stopped
             if self.get_status() not in [Processor.CREATING, Processor.AVAILABLE]:
-                logging.debug("(%s) Instance has been shut down or removed intentionally. "
-                              "Resetting instance!" % self.name)
+                logging.debug("(%s) Instance has been shut down, removed, or preempted. Resetting instance!" % self.name)
                 break
 
             # Check if ssh server is accessible. If not wait another cycle

@@ -242,10 +242,17 @@ class PreemptibleInstance(Instance):
 
         logging.warning("(%s) Handling failure for proc '%s'" % (self.name, proc_name))
         logging.debug("(%s) Error code: %s" % (self.name, proc_obj.returncode))
-        
+
         if proc_obj.returncode == 255:
             logging.warning("(%s) Waiting for 60 seconds to make sure instance wasn't preempted..." % self.name)
             time.sleep(60)
+
+            # Resolve case when SSH server resets/closes the connection
+            if proc_obj.err.lower().startswith("connection reset by") \
+                or proc_obj.err.lower().startswith("connection closed by"):
+                logging.error("(%s) SSH Server rejected connection." % self.name)
+                self.reset()
+                return
 
         # Raise error if processor is locked
         if self.is_locked() and proc_name != "destroy":
