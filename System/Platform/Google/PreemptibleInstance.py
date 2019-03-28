@@ -75,7 +75,8 @@ class PreemptibleInstance(Instance):
         # Wait for instance to stop
         self.wait_process("stop")
 
-    def reset(self):
+    def reset(self, force_destroy=False):
+
         # Resetting takes place just for preemptible instances
         if not self.is_preemptible:
             return
@@ -89,7 +90,7 @@ class PreemptibleInstance(Instance):
         self.reset_count += 1
         if self.reset_count >= self.max_resets:
             logging.warning("(%s) Instance failed! Instance preempted and out of reset (num resets: %s). "
-                            "Resetting as standard insance." % (self.name, self.max_resets))
+                            "Resetting as standard instance." % (self.name, self.max_resets))
             # Switch to non-preemptible instance
             self.is_preemptible = False
 
@@ -97,30 +98,50 @@ class PreemptibleInstance(Instance):
         prev_price = self.price
         prev_start = self.start_time
 
-        if self.is_preemptible: # still want to use a preemptible image, so, we don't have to recreate
+        # Restart the instance if it is preemptible and is not required to be destroyed
+        if self.is_preemptible and not force_destroy:
 
             # Restart the instance
             self.stop()
             self.start()
 
             # Instance restart complete
-            logging.debug("(%s) Instance restarted, continue running processes..." % self.name)
+            logging.debug("(%s) Instance restarted, continue running processes!" % self.name)
+
         else:
-            logging.debug("(%s) Destroying old instance to create new standard instance..." % self.name)
-            # Destroying the instance
+            # Recreate the instance
             self.destroy()
+            self.create()
+
+            # Instance recreation complete
+            logging.debug("(%s) Instance recreated, rerunning all processes!" % self.name)
 
         # Add record to cost history of last run
-        logging.debug("({0}) Appending to cost history: {1}, {2}, {3}".format(self.name, prev_price, prev_start, self.stop_time))
+        logging.debug("({0}) Appending to cost history: {1}, {2}, {3}".format(self.name, prev_price, prev_start,
+                                                                              self.stop_time))
         self.reset_history.append((prev_price, prev_start, self.stop_time))
 
-        # Removing old process(es) that shouldn't be rerun after a restart
-        self.processes.pop("create", None)
-        self.processes.pop("destroy", None)
-        self.processes.pop("start", None)
-        self.processes.pop("stop", None)
+        # Rerun all commands if the instance is not preemptible or was previously destroyed
+        if not self.is_preemptible or force_destroy:
 
-        # Identifying which process(es) need to be recalled
+            # Rerun all commands
+            for proc_name, proc_obj in self.processes.items():
+
+                # Skip processes that do not need to be rerun
+                if proc_name in ["create", "destory", "start", "stop"]:
+                    continue
+
+                # Run and wait for the command to finish
+                self.run(job_name=proc_name,
+                         cmd=proc_obj.get_command(),
+                         docker_image=proc_obj.get_docker_image(),
+                         quiet_failure=proc_obj.is_quiet())
+                self.wait_process(proc_name)
+
+            # Exit function as the rest of the code is related to an instance that was not destroyed
+            return
+
+        # Identifying which process(es) need(s) to be recalled
         commands_to_run = list()
         checkpoint_queue = list()
         add_to_checkpoint_queue = False
@@ -130,11 +151,15 @@ class PreemptibleInstance(Instance):
         cleanup_output = False
         for proc_name, proc_obj in self.processes.items():
 
+            # Skip processes that do not need to be rerun
+            if proc_name in ["create", "destroy", "start", "stop"]:
+                continue
+
             # Skip processes that were successful and complete
             if not proc_obj.has_failed() and proc_obj.complete:
                 continue
 
-            # adding to the checkpoint queue since we're past a checkpoint marker
+            # Adding to the checkpoint queue since we're past a checkpoint marker
             if add_to_checkpoint_queue:
                 checkpoint_queue.append(proc_name)
 
@@ -145,52 +170,43 @@ class PreemptibleInstance(Instance):
             else:
                 commands_to_run.append(proc_name)
 
-            # hit a checkpoint marker, start adding to the checkpoint_queue after this process
+            # Hit a checkpoint marker, start adding to the checkpoint_queue after this process
             if proc_name in checkpoint_commands:
                 if fail_to_checkpoint:
                     if cleanup_output:
                         self.__remove_wrk_out_dir()
 
-                    # add all the commands in the checkpoint queue to commands to run
+                    # Add all the commands in the checkpoint queue to commands to run
                     commands_to_run.extend(checkpoint_queue)
 
                 # Obtain the cleanup status of the current checkpoint
                 cleanup_output = [d[1] for d in self.checkpoints if d[0] == proc_name][0]
                 logging.debug("CLEAR OUTPUT IS: %s FOR process %s" % (str(cleanup_output), str(proc_name)))
 
-                # clear the list if we run into a new checkpoint command
+                # Clear the list if we run into a new checkpoint command
                 checkpoint_queue = list()
                 add_to_checkpoint_queue = True
 
-        # still have processes in the checkpoint queue
+        # Still have processes in the checkpoint queue
         if len(checkpoint_queue) > 0:
             if fail_to_checkpoint:
                 if cleanup_output:
                     self.__remove_wrk_out_dir()
 
-                # add all the commands in the checkpoint queue to commands to run
+                # Add all the commands in the checkpoint queue to commands to run
                 commands_to_run.extend(checkpoint_queue)
 
-        # Set commands that need to be rerun to rerun mode
+        # Set commands that need to be rerun to rerun mode, so they are all being rerun
         for proc_to_rerun in commands_to_run:
             self.processes[proc_to_rerun].set_to_rerun()
 
+        # Log which commands will be rerun
         logging.debug("Commands to be rerun: (%s) " % str(
-            [proc_name for proc_name, proc_obj in self.processes.items() if proc_obj.needs_rerun()])) # log names of commands
+            [proc_name for proc_name, proc_obj in self.processes.items() if proc_obj.needs_rerun()]))
 
-        if not self.is_preemptible: # Recreating the instance as standard instance
-            self.create()
-
-        # Rerunning all the commands
+        # Rerunning all the commands that need to be rerun
         for proc_name, proc_obj in self.processes.items():
-            if self.is_preemptible:
-                if proc_obj.needs_rerun():
-                    self.run(job_name=proc_name,
-                             cmd=proc_obj.get_command(),
-                             docker_image=proc_obj.get_docker_image(),
-                             quiet_failure=proc_obj.is_quiet())
-                    self.wait_process(proc_name)
-            else:
+            if proc_obj.needs_rerun():
                 self.run(job_name=proc_name,
                          cmd=proc_obj.get_command(),
                          docker_image=proc_obj.get_docker_image(),
@@ -243,6 +259,10 @@ class PreemptibleInstance(Instance):
         logging.warning("(%s) Handling failure for proc '%s'" % (self.name, proc_name))
         logging.debug("(%s) Error code: %s" % (self.name, proc_obj.returncode))
 
+        # Raise error if processor is locked
+        if self.is_locked() and proc_name != "destroy":
+            self.raise_error(proc_name, proc_obj)
+
         if proc_obj.returncode == 255:
             logging.warning("(%s) Waiting for 60 seconds to make sure instance wasn't preempted..." % self.name)
             time.sleep(60)
@@ -250,13 +270,9 @@ class PreemptibleInstance(Instance):
             # Resolve case when SSH server resets/closes the connection
             if proc_obj.err.lower().startswith("connection reset by") \
                 or proc_obj.err.lower().startswith("connection closed by"):
-                logging.error("(%s) SSH Server rejected connection." % self.name)
-                self.reset()
+                logging.error("(%s) SSH Server rejected connection!" % self.name)
+                self.reset(force_destroy=True)
                 return
-
-        # Raise error if processor is locked
-        if self.is_locked() and proc_name != "destroy":
-            self.raise_error(proc_name, proc_obj)
 
         # Check to see if issue was caused by rate limit. If so, cool out for a random time limit
         if "Rate Limit Exceeded" in proc_obj.err:
