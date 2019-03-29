@@ -269,7 +269,6 @@ class PreemptibleInstance(Instance):
 
             # Resolve case when SSH server resets/closes the connection
             if "connection reset by" in proc_obj.err.lower() or "connection closed by" in proc_obj.err.lower():
-                time.sleep(86400)
                 self.reset(force_destroy=True)
                 return
 
