@@ -131,6 +131,10 @@ class PreemptibleInstance(Instance):
                 if proc_name in ["create", "destroy", "start", "stop"]:
                     continue
 
+                # Skip configure_ssh specific commands if already configured
+                if proc_name in ["configureSSH", "restartSSH"] and self.ssh_connections_increased:
+                    continue
+
                 # Run and wait for the command to finish
                 self.run(job_name=proc_name,
                          cmd=proc_obj.get_command(),
@@ -153,6 +157,10 @@ class PreemptibleInstance(Instance):
 
             # Skip processes that do not need to be rerun
             if proc_name in ["create", "destroy", "start", "stop"]:
+                continue
+
+            # Skip configure_ssh specific commands if already configured
+            if proc_name in ["configureSSH", "restartSSH"] and self.ssh_connections_increased:
                 continue
 
             # Skip processes that were successful and complete
