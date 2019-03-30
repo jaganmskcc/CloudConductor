@@ -1,4 +1,36 @@
 from Modules import Module
+from System.Platform import Platform
+
+class View(Module):
+
+    def __init__(self, module_id, is_docker = False):
+        super(View, self).__init__(module_id, is_docker)
+        self.output_keys    = ["vcf_gz"]
+
+    def define_input(self):
+        self.add_argument("vcf",        is_required=True)                       # Input VCF file
+        self.add_argument("bcftools",   is_required=True,   is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True,   default_value=1)
+        self.add_argument("mem",        is_required=True,   default_value=2)
+
+    def define_output(self):
+
+        randomer = Platform.generate_unique_id()
+        vcf_gz = self.generate_unique_file_name(extension="{0}.vcf.gz".format(randomer))
+        self.add_output("vcf_gz", vcf_gz)
+
+    def define_command(self):
+        # Get input arguments
+        vcf         = self.get_argument("vcf")
+        bcftools    = self.get_argument("bcftools")
+        threads     = self.get_argument("nr_cpus")
+
+        # Get output file for compressed VCF file
+        vcf_gz     = self.get_output("vcf_gz")
+
+        cmd = "{0} view -O z --threads {1} {2} > {3} !LOG2!".format(bcftools, threads, vcf, vcf_gz)
+
+        return cmd
 
 class BcftoolsIndex(Module):
 
@@ -15,18 +47,18 @@ class BcftoolsIndex(Module):
     def define_output(self):
 
         vcf_gz = self.get_argument("vcf_gz")
-        self.add_output("vcf_csi", "{0}.gz.csi".format(vcf_gz))
+        self.add_output("vcf_csi", "{0}.csi".format(vcf_gz))
 
     def define_command(self):
         # Get input arguments
         vcf_gz      = self.get_argument("vcf_gz")
         bcftools    = self.get_argument("bcftools")
-        threads     = self.get_argument("num_cpus")
+        threads     = self.get_argument("nr_cpus")
 
         # Get output file for VCF index file
         vcf_csi     = self.get_output("vcf_csi")
 
-        cmd = "{0} index --threads {3} -f -o {2} {1} !LOG3!".format(bcftools, vcf_gz, vcf_csi, threads)
+        cmd = "{0} index --threads {3} -f -c -o {2} {1} !LOG3!".format(bcftools, vcf_gz, vcf_csi, threads)
 
         return cmd
 

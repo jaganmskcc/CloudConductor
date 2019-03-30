@@ -46,7 +46,7 @@ class VCFMerger(Merger):
 
 class BGZipVCFMerger(Merger):
 
-    def __init__(self, module_id):
+    def __init__(self, module_id, is_docker=False):
         super(BGZipVCFMerger, self).__init__(module_id)
         self.output_keys    = ["vcf"]
 

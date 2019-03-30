@@ -16,7 +16,8 @@ class Processor(object):
     CREATING    = 1  # Instance is being created
     DESTROYING  = 2  # Instance is destroyed
     AVAILABLE   = 3  # Available for running processes
-    MAX_STATUS  = 3  # Maximum status value possible
+
+    STATUSES    = ["OFF", "CREATING", "DESTROYING", "AVAILABLE"]
 
     def __init__(self, name, nr_cpus, mem, disk_space, **kwargs):
         self.name       = name
@@ -149,10 +150,16 @@ class Processor(object):
     ############ Getters and Setters
     def set_status(self, new_status):
         # Updates instance status with threading.lock() to prevent race conditions
-        if new_status > Processor.MAX_STATUS or new_status < 0:
+        if new_status > len(Processor.STATUSES) or new_status < 0:
             logging.debug("(%s) Status level %d not available!" % (self.name, new_status))
             raise RuntimeError("Instance %s has failed!" % self.name)
+
         with self.status_lock:
+
+            # Report the status change, if any
+            if new_status != self.status:
+                logging.info("(%s) Status has been changed to %s." % (self.name, Processor.STATUSES[new_status]))
+
             self.status = new_status
 
     def get_status(self):

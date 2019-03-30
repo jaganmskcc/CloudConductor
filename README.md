@@ -1,6 +1,6 @@
 <div align=center><img src="docs/_static/cloud-conductor-logo-colored.png" alt="CC" width=450 height=225 align="middle"/></div>
 
-## CloudCounductor: Simplified Bioinformatics
+## CloudConductor: Simplified Bioinformatics
 
 **CloudConductor** is a cloud-based workflow engine for defining and executing bioinformatics pipelines in a cloud environment. 
 Currently, the framework has been tested extensively on the [Google Cloud Platform](https://cloud.google.com/), but will eventually support other platforms including AWS, Azure, etc.
@@ -78,7 +78,7 @@ Get started with our full [documentation](https://cloudconductor.readthedocs.io)
 
 ## Project Status
 
-CloudConductor is actively under development. To get involved or request features, please contact any of the authors listed below.
+CloudConductor is actively under development. To get involved or request features, please contact [Razvan Panea](https://github.com/ripanea).
 
 ## Authors
 

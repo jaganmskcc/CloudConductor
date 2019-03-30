@@ -24,6 +24,21 @@ class PreemptibleInstance(Instance):
         # Stack for determining costs across resets
         self.reset_history = []
 
+    def recreate(self):
+        if self.creation_resets < self.default_num_cmd_retries:
+            self.creation_resets += 1
+            self.stop()
+            self.start()
+
+        else:
+            logging.debug("(%s) Instance successfully created but "
+                          "never became available after %s resets!" %
+                          (self.name, self.default_num_cmd_retries))
+
+            raise RuntimeError("(%s) Instance successfully created but never"
+                               " became available after multiple tries!" %
+                               self.name)
+
     def start(self):
 
         logging.info("(%s) Process 'start' started!" % self.name)
@@ -40,15 +55,11 @@ class PreemptibleInstance(Instance):
         # Wait for start to complete if requested
         self.wait_process("start")
 
-        # Wait for startup script to completely finish
-        logging.debug("(%s) Waiting for instance to finish starting up..." % self.name)
-        self.startup_script_complete = False
+        # Wait for instance to be accessible through SSH
+        logging.debug("(%s) Waiting for instance to be accessible" % self.name)
         self.wait_until_ready()
 
     def stop(self):
-
-        # Remove "READY" metadata key from instance that states that the startup script is complete
-        GoogleCloudHelper.remove_metadata(self.name, self.zone, ["READY"])
 
         logging.info("(%s) Process 'stop' started!" % self.name)
         cmd = self.__get_gcloud_stop_cmd()
@@ -64,7 +75,8 @@ class PreemptibleInstance(Instance):
         # Wait for instance to stop
         self.wait_process("stop")
 
-    def reset(self):
+    def reset(self, force_destroy=False):
+
         # Resetting takes place just for preemptible instances
         if not self.is_preemptible:
             return
@@ -78,7 +90,7 @@ class PreemptibleInstance(Instance):
         self.reset_count += 1
         if self.reset_count >= self.max_resets:
             logging.warning("(%s) Instance failed! Instance preempted and out of reset (num resets: %s). "
-                            "Resetting as standard insance." % (self.name, self.max_resets))
+                            "Resetting as standard instance." % (self.name, self.max_resets))
             # Switch to non-preemptible instance
             self.is_preemptible = False
 
@@ -86,32 +98,54 @@ class PreemptibleInstance(Instance):
         prev_price = self.price
         prev_start = self.start_time
 
-        if self.is_preemptible: # still want to use a preemptible image, so, we don't have to recreate
-
-            # Actually ensure the instance is stopped, so the startup script can be relaunched
-            self.stop()
+        # Restart the instance if it is preemptible and is not required to be destroyed
+        if self.is_preemptible and not force_destroy:
 
             # Restart the instance
+            self.stop()
             self.start()
 
             # Instance restart complete
-            logging.debug("(%s) Instance restarted, continue running processes..." % self.name)
+            logging.debug("(%s) Instance restarted, continue running processes!" % self.name)
+
         else:
-            logging.debug("(%s) Destroying old instance to create new standard instance..." % self.name)
-            # Destroying the instance
+            # Recreate the instance
             self.destroy()
+            self.create()
+
+            # Instance recreation complete
+            logging.debug("(%s) Instance recreated, rerunning all processes!" % self.name)
 
         # Add record to cost history of last run
-        logging.debug("({0}) Appending to cost history: {1}, {2}, {3}".format(self.name, prev_price, prev_start, self.stop_time))
+        logging.debug("({0}) Appending to cost history: {1}, {2}, {3}".format(self.name, prev_price, prev_start,
+                                                                              self.stop_time))
         self.reset_history.append((prev_price, prev_start, self.stop_time))
 
-        # Removing old process(es) that shouldn't be rerun after a restart
-        self.processes.pop("create", None)
-        self.processes.pop("destroy", None)
-        self.processes.pop("start", None)
-        self.processes.pop("stop", None)
+        # Rerun all commands if the instance is not preemptible or was previously destroyed
+        if not self.is_preemptible or force_destroy:
 
-        # Identifying which process(es) need to be recalled
+            # Rerun all commands
+            for proc_name, proc_obj in self.processes.items():
+
+                # Skip processes that do not need to be rerun
+                if proc_name in ["create", "destroy", "start", "stop"]:
+                    continue
+
+                # Skip configure_ssh specific commands if already configured
+                if proc_name in ["configureSSH", "restartSSH"] and self.ssh_connections_increased:
+                    continue
+
+                # Run and wait for the command to finish
+                self.run(job_name=proc_name,
+                         cmd=proc_obj.get_command(),
+                         docker_image=proc_obj.get_docker_image(),
+                         quiet_failure=proc_obj.is_quiet())
+                self.wait_process(proc_name)
+
+            # Exit function as the rest of the code is related to an instance that was not destroyed
+            return
+
+        # Identifying which process(es) need(s) to be recalled
         commands_to_run = list()
         checkpoint_queue = list()
         add_to_checkpoint_queue = False
@@ -121,11 +155,19 @@ class PreemptibleInstance(Instance):
         cleanup_output = False
         for proc_name, proc_obj in self.processes.items():
 
+            # Skip processes that do not need to be rerun
+            if proc_name in ["create", "destroy", "start", "stop"]:
+                continue
+
+            # Skip configure_ssh specific commands if already configured
+            if proc_name in ["configureSSH", "restartSSH"] and self.ssh_connections_increased:
+                continue
+
             # Skip processes that were successful and complete
             if not proc_obj.has_failed() and proc_obj.complete:
                 continue
 
-            # adding to the checkpoint queue since we're past a checkpoint marker
+            # Adding to the checkpoint queue since we're past a checkpoint marker
             if add_to_checkpoint_queue:
                 checkpoint_queue.append(proc_name)
 
@@ -136,52 +178,43 @@ class PreemptibleInstance(Instance):
             else:
                 commands_to_run.append(proc_name)
 
-            # hit a checkpoint marker, start adding to the checkpoint_queue after this process
+            # Hit a checkpoint marker, start adding to the checkpoint_queue after this process
             if proc_name in checkpoint_commands:
                 if fail_to_checkpoint:
                     if cleanup_output:
                         self.__remove_wrk_out_dir()
 
-                    # add all the commands in the checkpoint queue to commands to run
+                    # Add all the commands in the checkpoint queue to commands to run
                     commands_to_run.extend(checkpoint_queue)
 
                 # Obtain the cleanup status of the current checkpoint
                 cleanup_output = [d[1] for d in self.checkpoints if d[0] == proc_name][0]
                 logging.debug("CLEAR OUTPUT IS: %s FOR process %s" % (str(cleanup_output), str(proc_name)))
 
-                # clear the list if we run into a new checkpoint command
+                # Clear the list if we run into a new checkpoint command
                 checkpoint_queue = list()
                 add_to_checkpoint_queue = True
 
-        # still have processes in the checkpoint queue
+        # Still have processes in the checkpoint queue
         if len(checkpoint_queue) > 0:
             if fail_to_checkpoint:
                 if cleanup_output:
                     self.__remove_wrk_out_dir()
 
-                # add all the commands in the checkpoint queue to commands to run
+                # Add all the commands in the checkpoint queue to commands to run
                 commands_to_run.extend(checkpoint_queue)
 
-        # Set commands that need to be rerun to rerun mode
+        # Set commands that need to be rerun to rerun mode, so they are all being rerun
         for proc_to_rerun in commands_to_run:
             self.processes[proc_to_rerun].set_to_rerun()
 
+        # Log which commands will be rerun
         logging.debug("Commands to be rerun: (%s) " % str(
-            [proc_name for proc_name, proc_obj in self.processes.items() if proc_obj.needs_rerun()])) # log names of commands
+            [proc_name for proc_name, proc_obj in self.processes.items() if proc_obj.needs_rerun()]))
 
-        if not self.is_preemptible: # Recreating the instance as standard instance
-            self.create()
-
-        # Rerunning all the commands
+        # Rerunning all the commands that need to be rerun
         for proc_name, proc_obj in self.processes.items():
-            if self.is_preemptible:
-                if proc_obj.needs_rerun():
-                    self.run(job_name=proc_name,
-                             cmd=proc_obj.get_command(),
-                             docker_image=proc_obj.get_docker_image(),
-                             quiet_failure=proc_obj.is_quiet())
-                    self.wait_process(proc_name)
-            else:
+            if proc_obj.needs_rerun():
                 self.run(job_name=proc_name,
                          cmd=proc_obj.get_command(),
                          docker_image=proc_obj.get_docker_image(),
@@ -233,14 +266,19 @@ class PreemptibleInstance(Instance):
 
         logging.warning("(%s) Handling failure for proc '%s'" % (self.name, proc_name))
         logging.debug("(%s) Error code: %s" % (self.name, proc_obj.returncode))
-        
-        if proc_obj.returncode == 255:
-            logging.warning("(%s) Waiting for 60 seconds to make sure instance wasn't preempted..." % self.name)
-            time.sleep(60)
 
         # Raise error if processor is locked
         if self.is_locked() and proc_name != "destroy":
             self.raise_error(proc_name, proc_obj)
+
+        if proc_obj.returncode == 255:
+            logging.warning("(%s) Waiting for 60 seconds to make sure instance wasn't preempted..." % self.name)
+            time.sleep(60)
+
+            # Resolve case when SSH server resets/closes the connection
+            if "connection reset by" in proc_obj.err.lower() or "connection closed by" in proc_obj.err.lower():
+                self.reset(force_destroy=True)
+                return
 
         # Check to see if issue was caused by rate limit. If so, cool out for a random time limit
         if "Rate Limit Exceeded" in proc_obj.err:
@@ -250,6 +288,8 @@ class PreemptibleInstance(Instance):
         if self.is_locked() and proc_name != "destroy":
             self.raise_error(proc_name, proc_obj)
 
+        # Update the status from the cloud and get the new status
+        self.update_status()
         curr_status = self.get_status()
 
         # Re-run any command (except create) if instance is up and cmd can be retried
@@ -308,6 +348,12 @@ class PreemptibleInstance(Instance):
                                                 stderr=sp.PIPE,
                                                 shell=True,
                                                 num_retries=proc_obj.get_num_retries() - 1)
+
+        # Check if the problem is that we cannot SSH in the instance
+        elif not self.check_ssh():
+            logging.warning("(%s) SSH connection cannot be established! Resetting..." % self.name)
+            self.reset()
+
         # Retry 'run' command
         elif can_retry:
             time.sleep(3)
@@ -322,44 +368,6 @@ class PreemptibleInstance(Instance):
         # Raise error if command failed, has no retries, and wasn't caused by preemption
         else:
             self.raise_error(proc_name, proc_obj)
-
-    def wait_until_ready(self):
-        # Wait until startup-script has completed on instance
-        # This signifies that the instance has initialized ssh and the instance environment is finalized
-        cycle_count = 1
-        # Waiting for 10 minutes for instance metadata to be set to READY
-        while cycle_count < 10 and not self.startup_script_complete and not self.is_locked():
-            time.sleep(60)
-            cycle_count += 1
-            self.startup_script_complete = self.poll_startup_script()
-
-        # Throw error if instance locking caused loop to exit
-        if self.is_locked():
-            logging.debug("(%s) Instance locked while waiting for creation!" % self.name)
-            raise RuntimeError("(%s) Instance locked while waiting for creation!" % self.name)
-
-        # Reset if instance not initialized within the alloted timeframe
-        elif not self.startup_script_complete:
-
-            # Try creating again if there are still resets
-            if self.creation_resets < self.default_num_cmd_retries:
-                logging.debug("(%s) Create took more than 10 minutes! Resetting instance!" % self.name)
-                self.creation_resets += 1
-                self.stop()
-                self.start()
-
-            # Throw error if instance still isn't ready after multiple tries
-            else:
-                logging.debug("(%s) Instance successfully created but "
-                              "never became available after %s resets!" %
-                              (self.name, self.default_num_cmd_retries))
-
-                raise RuntimeError("(%s) Instance successfully created but never"
-                                   " became available after %s resets!" %
-                                   (self.name, self.default_num_cmd_retries))
-
-        # Get and set external IP address if instance is ready
-        self.external_IP = GoogleCloudHelper.get_external_ip(self.name, self.zone)
 
     def __remove_wrk_out_dir(self):
 
