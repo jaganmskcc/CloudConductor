@@ -128,7 +128,7 @@ class PreemptibleInstance(Instance):
             for proc_name, proc_obj in self.processes.items():
 
                 # Skip processes that do not need to be rerun
-                if proc_name in ["create", "destory", "start", "stop"]:
+                if proc_name in ["create", "destroy", "start", "stop"]:
                     continue
 
                 # Run and wait for the command to finish
