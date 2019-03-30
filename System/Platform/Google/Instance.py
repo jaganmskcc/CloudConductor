@@ -116,7 +116,7 @@ class Instance(Processor):
 
         logging.debug("(%s) Using the following IP address: %s" % (self.name, self.external_IP))
 
-        cmd = "ssh -vvv -i ~/.ssh/google_compute_engine " \
+        cmd = "ssh -i ~/.ssh/google_compute_engine " \
               "-o CheckHostIP=no -o StrictHostKeyChecking=no " \
               "{0}@{1} -- '{2}'".format(getpass.getuser(), self.external_IP, cmd)
         return cmd
@@ -210,8 +210,6 @@ class Instance(Processor):
 
         # Wait for process to finish
         out, err = proc_obj.communicate()
-
-        logging.debug("Output is %s\nErr: %s" % (out,err))
 
         # Set process to complete
         proc_obj.set_complete()
