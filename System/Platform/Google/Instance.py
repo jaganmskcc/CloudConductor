@@ -205,7 +205,6 @@ class Instance(Processor):
 
         # Return immediately if process has already been set to complete
         if proc_obj.is_complete():
-            logging.debug("Output is %s\nErr: %s" % proc_obj.get_output())
             return proc_obj.get_output()
 
         # Wait for process to finish
