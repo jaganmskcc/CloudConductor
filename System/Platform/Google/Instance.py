@@ -205,7 +205,6 @@ class Instance(Processor):
 
         # Return immediately if process has already been set to complete
         if proc_obj.is_complete():
-            logging.debug("Output is %s\nErr: %s" % proc_obj.get_output())
             return proc_obj.get_output()
 
         # Wait for process to finish
@@ -262,6 +261,7 @@ class Instance(Processor):
 
         if curr_status == Processor.OFF:
             if proc_name == "destroy":
+                logging.debug("(%s) Processor already destroyed!" % self.name)
                 return
             can_retry = proc_name == "create" and proc_obj.get_num_retries() > 0
 

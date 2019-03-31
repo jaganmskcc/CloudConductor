@@ -294,11 +294,8 @@ class TaskWorker(Thread):
         # Try to destroy platform if it's not off
         try:
 
-            # Destroy processor if it hasn't already been destroyed
-            if not "destroy" in self.proc.processes:
-                self.proc.destroy(wait=False)
-
-            # Wait until processor is destroyed
+            # Destroy processor
+            self.proc.destroy(wait=False)
             self.proc.wait_process("destroy")
 
             # Deallocate

@@ -320,6 +320,7 @@ class PreemptibleInstance(Instance):
         elif curr_status == Processor.OFF:
             # Don't do anythying if destroy failed but instance doesn't actually exist anymore
             if proc_name == "destroy":
+                logging.debug("(%s) Processor already destroyed!" % self.name)
                 return
 
             # Handle cases where we have no idea why the instance doesn't currently exist (e.g. preemption, manual deletion)
