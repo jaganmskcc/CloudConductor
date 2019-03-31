@@ -261,6 +261,7 @@ class Instance(Processor):
 
         if curr_status == Processor.OFF:
             if proc_name == "destroy":
+                logging.debug("(%s) Processor already destroyed!" % self.name)
                 return
             can_retry = proc_name == "create" and proc_obj.get_num_retries() > 0
 
