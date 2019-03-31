@@ -305,7 +305,7 @@ class TaskWorker(Thread):
             if e.message != "":
                 logging.error("Received following error:\n%s" % e.message)
 
-    def __compute_disk_requirements(self, input_files, docker_image, input_multiplier=5):
+    def __compute_disk_requirements(self, input_files, docker_image, input_multiplier=10):
         # Compute size of disk needed to store input/output files
         input_size = 0
 
