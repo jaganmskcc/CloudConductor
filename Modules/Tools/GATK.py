@@ -722,3 +722,45 @@ class Mutect2(_GATKBase):
             tumor_status[_id] = _tumor
 
         return tumor_status.keys(), tumor_status.values()
+
+class PreprocessIntervals(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(PreprocessIntervals, self).__init__(module_id, is_docker)
+        self.output_keys = ["interval_list"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("bin_length",             is_required=True, default_value=0)
+        self.add_argument("nr_cpus",                is_required=True, default_value=1)
+        self.add_argument("mem",                    is_required=True, default_value=2)
+
+    def define_output(self):
+        # Declare interval list output filename
+        interval_list = self.generate_unique_file_name(extension=".interval.list")
+        self.add_output("interval_list", interval_list)
+
+    def define_command(self):
+        # Get input arguments
+        L                       = self.get_argument("location")
+        bin_length              = self.get_argument("bin_length")
+        ref                     = self.get_argument("ref")
+
+        # Get output arguments
+        interval_list = self.get_output("interval_list")
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Generate the command line for PreProcessIntervals
+        cmd = "{0} PreprocessIntervals -R {1} --bin-length {2} {3} {4}".format(gatk_cmd, ref, bin_length,
+                                                                               output_file_flag, interval_list)
+
+        # pass the location to include in the processing
+        if L is not None:
+            cmd = "{0} -L {1} --interval-merging-rule OVERLAPPING_ONLY".format(cmd, L)
+
+        return "{0} !LOG3!".format(cmd)
