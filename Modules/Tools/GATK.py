@@ -800,7 +800,7 @@ class CreateReadCountPanelOfNormals(_GATKBase):
 
         # if the read count is a list
         if isinstance(read_count_out, list):
-            cmd = "{0} {1}".format(cmd, '-I '.join(read_count_out))
+            cmd = "{0} -I {1}".format(cmd, '-I '.join(read_count_out))
         else:
             cmd = "{0} -I {1}".format(cmd, read_count_out)
 
