@@ -352,3 +352,46 @@ class GenomicsDBImport(PseudoMerger):
 
         # Generate command to make genomicsDB directory and run job
         return "rm -rf {0} ; {1} GenomicsDBImport {2} !LOG3!".format(genomicsDB, gatk_cmd, " ".join(opts))
+
+class CreateReadCountPanelOfNormals(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(CreateReadCountPanelOfNormals, self).__init__(module_id, is_docker)
+        self.output_keys = ["pon"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("read_count_out", is_required=True)
+        self.add_argument("nr_cpus",        is_required=True, default_value=1)
+        self.add_argument("mem",            is_required=True, default_value=2)
+
+    def define_output(self):
+        # Declare PoN output filename
+        pon = self.generate_unique_file_name(extension=".pon.txt")
+        self.add_output("pon", pon)
+
+    def define_command(self):
+        # Get input arguments
+        read_count_out  = self.get_argument("read_count_out")
+
+        # Get output arguments
+        pon = self.get_output("pon")
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Generate the command line for CreateReadCountPanelOfNormals
+        cmd = "{0} CreateReadCountPanelOfNormals".format(gatk_cmd)
+
+        # If the read count is a list create a list of input files
+        if isinstance(read_count_out, list):
+            cmd = "{0} -I {1}".format(cmd, '-I '.join(read_count_out))
+        else:
+            cmd = "{0} -I {1}".format(cmd, read_count_out)
+
+        cmd = "{0} {1} {2}".format(cmd, output_file_flag, pon)
+
+        return "{0} !LOG3!".format(cmd)
