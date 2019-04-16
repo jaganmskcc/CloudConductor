@@ -798,7 +798,7 @@ class CreateReadCountPanelOfNormals(_GATKBase):
         # Generate the command line for CreateReadCountPanelOfNormals
         cmd = "{0} CreateReadCountPanelOfNormals".format(gatk_cmd)
 
-        # if the read count is a list
+        # If the read count is a list create a list of input files
         if isinstance(read_count_out, list):
             cmd = "{0} -I {1}".format(cmd, '-I '.join(read_count_out))
         else:
