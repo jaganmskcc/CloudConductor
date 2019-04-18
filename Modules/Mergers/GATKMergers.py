@@ -367,7 +367,7 @@ class CreateReadCountPanelOfNormals(_GATKBase):
 
     def define_output(self):
         # Declare PoN output filename
-        pon = self.generate_unique_file_name(extension=".pon.txt")
+        pon = self.generate_unique_file_name(extension=".pon.hdf5")
         self.add_output("pon", pon)
 
     def define_command(self):
@@ -388,7 +388,7 @@ class CreateReadCountPanelOfNormals(_GATKBase):
 
         # If the read count is a list create a list of input files
         if isinstance(read_count_out, list):
-            cmd = "{0} -I {1}".format(cmd, '-I '.join(read_count_out))
+            cmd = "{0} -I {1}".format(cmd, ' -I '.join(read_count_out))
         else:
             cmd = "{0} -I {1}".format(cmd, read_count_out)
 
