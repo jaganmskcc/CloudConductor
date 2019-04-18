@@ -276,7 +276,9 @@ class PreemptibleInstance(Instance):
             time.sleep(60)
 
             # Resolve case when SSH server resets/closes the connection
-            if "connection reset by" in proc_obj.err.lower() or "connection closed by" in proc_obj.err.lower():
+            if "connection reset by" in proc_obj.err.lower() \
+                    or "connection closed by" in proc_obj.err.lower() \
+                    or "permission denied (publickey)." in proc_obj.err.lower():
                 self.reset(force_destroy=True)
                 return
 
