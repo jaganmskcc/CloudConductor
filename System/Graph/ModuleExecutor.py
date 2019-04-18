@@ -127,6 +127,9 @@ class ModuleExecutor(object):
         count = 1
         job_names = []
 
+        # List of output file paths. We create this list to ensure the files are not being overwritten
+        output_filepaths = []
+
         for output_file in outputs:
             if output_file.get_type() in final_output_types:
                 dest_dir = final_output_dir
@@ -137,6 +140,23 @@ class ModuleExecutor(object):
             job_name = "get_size_%s_%s_%s" % (self.task_id, output_file.get_type(), count)
             file_size = self.storage_helper.get_file_size(output_file.get_path(), job_name=job_name)
             output_file.set_size(file_size)
+
+            # Check if there already exists a file with the same name on the bucket
+            destination_path = "{0}/{1}/".format(dest_dir.rstrip("/"), output_file.get_filename())
+            if destination_path in output_filepaths:
+
+                # Change the destination directory for a new subdirectory
+                dest_dir = "{0}/{1}/".format(dest_dir.rstrip("/"), len(output_filepaths))
+
+                # Regenerate the destination path
+                new_destination_path = "{0}/{1}".format(dest_dir.rstrip("/"), output_file.get_filename())
+
+                # Add the new path to the output file paths
+                output_filepaths.append(new_destination_path)
+
+            else:
+                # Just add the new path to the list of output file paths
+                output_filepaths.append(destination_path)
 
             # Transfer to correct output directory
             job_name = "save_output_%s_%s_%s" % (self.task_id, output_file.get_type(), count)
