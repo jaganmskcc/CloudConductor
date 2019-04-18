@@ -39,7 +39,7 @@ def configure_argparser(argparser_obj):
         return arg_string
 
     # Path to sample set config file
-    argparser_obj.add_argument("--input",
+    argparser_obj.add_argument("-i", "--input",
                                action="store",
                                #type=argparse.FileType('r'),
                                type=file_type,
@@ -49,7 +49,7 @@ def configure_argparser(argparser_obj):
                                     "and information for one or more samples.")
 
     # Path to sample set config file
-    argparser_obj.add_argument("--name",
+    argparser_obj.add_argument("-n", "--name",
                                action="store",
                                type=str,
                                dest="pipeline_name",
@@ -57,7 +57,7 @@ def configure_argparser(argparser_obj):
                                help="Descriptive pipeline name. Will be appended to final output dir. Should be unique across runs.")
 
     # Path to pipeline graph config file
-    argparser_obj.add_argument("--pipeline_config",
+    argparser_obj.add_argument("-g", "--pipeline_config",
                                action='store',
                                #type=argparse.FileType('r'),
                                type=file_type,
@@ -67,7 +67,7 @@ def configure_argparser(argparser_obj):
                                     "pipeline graph and tool-specific input.")
 
     # Path to resources config file
-    argparser_obj.add_argument("--res_kit_config",
+    argparser_obj.add_argument("-k", "--res_kit_config",
                                action='store',
                                #type=argparse.FileType('r'),
                                type=file_type,
@@ -77,7 +77,7 @@ def configure_argparser(argparser_obj):
                                     "the resources used in the pipeline.")
 
     # Path to platform config file
-    argparser_obj.add_argument("--plat_config",
+    argparser_obj.add_argument("-p", "--plat_config",
                                action='store',
                                #type=argparse.FileType('r'),
                                type=file_type,
