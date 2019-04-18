@@ -79,6 +79,9 @@ class GAPFile:
         # All other files should be moved as a single file
         return self.path
 
+    def get_filename(self):
+        return os.path.basename(self.path)
+
     def get_containing_dir(self):
         return self.containing_dir
 

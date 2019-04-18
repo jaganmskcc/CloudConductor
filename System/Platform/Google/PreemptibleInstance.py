@@ -276,7 +276,9 @@ class PreemptibleInstance(Instance):
             time.sleep(60)
 
             # Resolve case when SSH server resets/closes the connection
-            if "connection reset by" in proc_obj.err.lower() or "connection closed by" in proc_obj.err.lower():
+            if "connection reset by" in proc_obj.err.lower() \
+                    or "connection closed by" in proc_obj.err.lower() \
+                    or "permission denied (publickey)." in proc_obj.err.lower():
                 self.reset(force_destroy=True)
                 return
 
@@ -339,6 +341,11 @@ class PreemptibleInstance(Instance):
             logging.warning("(%s) Instance preempted! Resetting..." % self.name)
             self.reset()
 
+        # Check if the problem is that we cannot SSH in the instance
+        elif proc_obj.return_code == 255 and not self.check_ssh():
+            logging.warning("(%s) SSH connection cannot be established! Resetting..." % self.name)
+            self.reset()
+
         # Retry start/destroy command
         elif can_retry and proc_name in ["create", "destroy"]:
             time.sleep(3)
@@ -349,11 +356,6 @@ class PreemptibleInstance(Instance):
                                                 stderr=sp.PIPE,
                                                 shell=True,
                                                 num_retries=proc_obj.get_num_retries() - 1)
-
-        # Check if the problem is that we cannot SSH in the instance
-        elif not self.check_ssh():
-            logging.warning("(%s) SSH connection cannot be established! Resetting..." % self.name)
-            self.reset()
 
         # Retry 'run' command
         elif can_retry:
