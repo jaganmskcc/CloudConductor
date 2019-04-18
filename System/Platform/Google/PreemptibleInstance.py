@@ -342,7 +342,7 @@ class PreemptibleInstance(Instance):
             self.reset()
 
         # Check if the problem is that we cannot SSH in the instance
-        elif proc_obj.return_code == 255 and not self.check_ssh():
+        elif proc_obj.returncode == 255 and not self.check_ssh():
             logging.warning("(%s) SSH connection cannot be established! Resetting..." % self.name)
             self.reset()
 
