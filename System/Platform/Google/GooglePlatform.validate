@@ -9,6 +9,7 @@ report_topic                = string(default="pipeline_reports")
 zone                        = string(default="us-east1-b")
 service_account_key_file    = string
 randomize_zone              = boolean(default=False)
+input_multiplier            = integer(default=5)
 
 [task_processor]
 disk_image                  = string(default="davelab-image-latest")

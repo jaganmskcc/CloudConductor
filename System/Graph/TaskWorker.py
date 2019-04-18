@@ -305,7 +305,7 @@ class TaskWorker(Thread):
             if e.message != "":
                 logging.error("Received following error:\n%s" % e.message)
 
-    def __compute_disk_requirements(self, input_files, docker_image, input_multiplier=10):
+    def __compute_disk_requirements(self, input_files, docker_image, input_multiplier=None):
         # Compute size of disk needed to store input/output files
         input_size = 0
 
@@ -320,6 +320,10 @@ class TaskWorker(Thread):
                 input_size += input_file.get_size()*5
             else:
                 input_size += input_file.get_size()
+
+        # Obtain the input multiplier if not provided
+        if input_multiplier is None:
+            input_multiplier = self.platform.config.get("input_multiplier", 5)
 
         # Set size of desired disk
         disk_size = int(math.ceil(input_multiplier * input_size))
