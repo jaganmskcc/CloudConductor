@@ -271,14 +271,18 @@ class PreemptibleInstance(Instance):
         if self.is_locked() and proc_name != "destroy":
             self.raise_error(proc_name, proc_obj)
 
+        # Check if we receive public key error
+        if "permission denied (publickey)." in proc_obj.err.lower():
+            self.reset(force_destroy=True)
+            return
+
         if proc_obj.returncode == 255:
             logging.warning("(%s) Waiting for 60 seconds to make sure instance wasn't preempted..." % self.name)
             time.sleep(60)
 
             # Resolve case when SSH server resets/closes the connection
             if "connection reset by" in proc_obj.err.lower() \
-                    or "connection closed by" in proc_obj.err.lower() \
-                    or "permission denied (publickey)." in proc_obj.err.lower():
+                    or "connection closed by" in proc_obj.err.lower():
                 self.reset(force_destroy=True)
                 return
 
