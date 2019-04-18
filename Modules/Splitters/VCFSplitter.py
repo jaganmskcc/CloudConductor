@@ -47,7 +47,7 @@ class VCFSplitter(Splitter):
         # Get names of chromosomes in VCF file
         vcf_in = self.get_argument("vcf")
         for chrom in self.get_argument("vcf_chrom_list"):
-            vcf_out = "{0}.{1}.vcf".format(vcf_in, chrom)
+            vcf_out = "{0}.{1}.vcf".format(vcf_in.rsplit(".",1)[0], chrom)
             self.make_split(split_id=chrom)
             self.add_output(split_id=chrom, key="vcf", value=vcf_out)
 
@@ -61,4 +61,4 @@ class VCFSplitter(Splitter):
             java = self.get_argument("java")
             return "%s -jar %s split %s !LOG3!" % (java, snpsift, vcf_in)
         else:
-            return "%s split %s !LOG3!" % (snpsift, vcf_in)
+            return "java -jar %s split %s !LOG3!" % (snpsift, vcf_in)
