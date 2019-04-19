@@ -387,7 +387,7 @@ class CreateReadCountPanelOfNormals(_GATKBase):
         extreme_sample_median_percentile        = self.get_argument("extreme_sample_median_percentile")
         max_zeros_in_interval_percentage        = self.get_argument("maximum_zeros_in_interval_percentage")
         max_zeros_in_sample_percentage          = self.get_argument("maximum_zeros_in_sample_percentage")
-        min_interval_median_percentile          = self.get_argument("mimimum_interval_median_percentile")
+        min_interval_median_percentile          = self.get_argument("minimum_interval_median_percentile")
         eigensamples                            = self.get_argument("number_of_eigensamples")
 
         # Get output arguments
