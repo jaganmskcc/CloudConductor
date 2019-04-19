@@ -764,3 +764,65 @@ class PreprocessIntervals(_GATKBase):
             cmd = "{0} -L {1} --interval-merging-rule OVERLAPPING_ONLY".format(cmd, L)
 
         return "{0} !LOG3!".format(cmd)
+
+class DenoiseReadCounts(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(DenoiseReadCounts, self).__init__(module_id, is_docker)
+        self.output_keys = ["std_copy_ratio", "denoise_copy_ratio"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("read_count_out",         is_required=True)
+        self.add_argument("pon",                    is_required=False, default_value=None)
+        self.add_argument("annotated_intervals",    is_required=False, default_value=None)
+        self.add_argument("number_of_eigensamples", is_required=False, default_value=None)
+        self.add_argument("nr_cpus",                is_required=True, default_value=1)
+        self.add_argument("mem",                    is_required=True, default_value=2)
+
+    def define_output(self):
+        # Declare output filename for copy ratio
+        std_copy_ratio      = self.generate_unique_file_name(extension=".standardizedCR.txt")
+        denoise_copy_ratio  = self.generate_unique_file_name(extension=".denoisedCR.txt")
+        self.add_output("std_copy_ratio", std_copy_ratio)
+        self.add_output("denoise_copy_ratio", denoise_copy_ratio)
+
+    def define_command(self):
+        # Get input arguments
+        read_count_out      = self.get_argument("read_count_out")
+        pon                 = self.get_argument("pon")
+        annotated_intervals = self.get_argument("annotated_intervals")
+        eigensamples        = self.get_argument("number_of_eigensamples")
+
+        # Get output arguments
+        std_copy_ratio      = self.get_output("std_copy_ratio")
+        denoise_copy_ratio  = self.get_output("denoise_copy_ratio")
+
+        if pon is not None and annotated_intervals is not None:
+            logging.error("PoN and annotated intervals both can not be provided at the same time.")
+            raise NotImplementedError("PoN and annotated intervals both can not be provided at the same time.")
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Generate the command line for DenoiseReadCounts
+        cmd = "{0} DenoiseReadCounts".format(gatk_cmd)
+
+        # if the Panel of Normal is provided, denoise the read count using it
+        if pon:
+            cmd = "{0} --count-panel-of-normals {1}".format(cmd, pon)
+
+        # if the annotated interval is provided, denoise the read count using it
+        if annotated_intervals:
+            cmd = "{0} --annotated-intervals {1}".format(cmd, annotated_intervals)
+
+        # if the number of eigne samples is provided, use them for denoising
+        if eigensamples:
+            cmd = "{0} --number-of-eigensamples {1}".format(cmd, eigensamples)
+
+        # add the rest of the arguments to command
+        cmd = "{0} -I {1} --standardized-copy-ratios {2} --denoised-copy-ratios {3}".format(cmd, read_count_out,
+                                                                                            std_copy_ratio,
+                                                                                            denoise_copy_ratio)
+
+        return "{0} !LOG3!".format(cmd)
