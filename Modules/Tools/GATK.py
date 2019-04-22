@@ -826,3 +826,77 @@ class DenoiseReadCounts(_GATKBase):
                                                                                             denoise_copy_ratio)
 
         return "{0} !LOG3!".format(cmd)
+
+class PlotDenoisedCopyRatios(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(PlotDenoisedCopyRatios, self).__init__(module_id, is_docker)
+        self.output_keys = ["denoised_plot", "denoised_plot_lm4", "std_mad", "denoised_mad", "delta_mad",
+                            "scale_delta_mad"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("sample_name",            is_required=True)
+        self.add_argument("std_copy_ratio",         is_required=True)
+        self.add_argument("denoise_copy_ratio",     is_required=False, default_value=None)
+        self.add_argument("ref_dict",               is_required=False, is_resource=True)
+        self.add_argument("min_contig_len",         is_required=False, default_value=46709983)
+        self.add_argument("nr_cpus",                is_required=True, default_value=1)
+        self.add_argument("mem",                    is_required=True, default_value=2)
+
+    def define_output(self):
+
+        # Get the sample name to use it in file name creation
+        sample_name = self.get_argument("sample_name")
+
+        # Declare unique file name for a single output file
+        denoised_plot = self.generate_unique_file_name(extension="{0}.denoised.png".format(sample_name))
+
+        # Split the genereated unique output file name to get prefix to use to generate other output filenames
+        prefix = denoised_plot.split(".denoised.png")[0]
+
+        # Generate rest of the output file names
+        denoised_plot_lm4 = "{0}.denoisedLimit4.png".format(prefix)
+        std_mad = "{0}.standardizedMAD.txt".format(prefix)
+        denoised_mad = "{0}.denoisedMAD.txt".format(prefix)
+        delta_mad = "{0}.deltaMAD.txt".format(prefix)
+        scale_delta_mad = "{0}.scaledDeltaMAD.txt".format(prefix)
+
+        # Add output file keys to be returned to Bucket
+        self.add_output("denoised_plot", denoised_plot)
+        self.add_output("denoised_plot_lm4", denoised_plot_lm4)
+        self.add_output("std_mad", std_mad)
+        self.add_output("denoised_mad", denoised_mad)
+        self.add_output("delta_mad", delta_mad)
+        self.add_output("scale_delta_mad", scale_delta_mad)
+
+    def define_command(self):
+        # Get input arguments
+        std_copy_ratio      = self.get_argument("std_copy_ratio")
+        denoise_copy_ratio  = self.get_argument("denoise_copy_ratio")
+        ref_dict            = self.get_argument("ref_dict")
+        min_contig_len      = self.get_argument("min_contig_len")
+
+        # get the prefix for output file names
+        prefix = self.get_output("denoised_plot").get_filename().split(".denoised.png")[0]
+
+        # Get output directory
+        out_dir = self.get_output_dir()
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Generate the command line for DenoiseReadCounts
+        cmd = "{0} PlotDenoisedCopyRatios".format(gatk_cmd)
+
+        # add the rest of the arguments to command
+        cmd = "{0} --standardized-copy-ratios {1} --denoised-copy-ratios {2} --sequence-dictionary {3} " \
+              "--minimum-contig-length {4} --output-prefix {5} {6} {7}".format(cmd, std_copy_ratio, denoise_copy_ratio,
+                                                                               ref_dict, min_contig_len, prefix,
+                                                                               output_file_flag, out_dir)
+
+        return "{0} !LOG3!".format(cmd)
+    
