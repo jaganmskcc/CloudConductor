@@ -255,6 +255,11 @@ class Instance(Processor):
         if self.is_locked() and proc_name != "destroy":
             self.raise_error(proc_name, proc_obj)
 
+        # Check if we receive public key error and only recreate if it happened during configuring SSH step
+        if "permission denied (publickey)." in proc_obj.err.lower() and proc_name in ["configureSSH", "restartSSH"]:
+            self.recreate()
+            return
+
         # First update the status from the cloud and then get the new status
         self.update_status()
         curr_status = self.get_status()
