@@ -147,7 +147,7 @@ class Datastore(object):
 
         # Special case when argument MUST be a resource type. In this case we can only get the arg from the RK.
         else:
-            input_order = ["docker_input", "resource_input"]
+            input_order = ["docker_input", "resource_input", "parent_input", "sample_input", "config_input"]
 
         # Search the key in each input type
         for input_type in input_order:
