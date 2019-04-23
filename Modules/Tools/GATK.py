@@ -774,7 +774,7 @@ class DenoiseReadCounts(_GATKBase):
     def define_input(self):
         self.define_base_args()
         self.add_argument("read_count_out",         is_required=True)
-        self.add_argument("pon",                    is_required=False, default_value=None)
+        self.add_argument("pon",                    is_required=False, is_resource=True, default_value=None)
         self.add_argument("annotated_intervals",    is_required=False, default_value=None)
         self.add_argument("number_of_eigensamples", is_required=False, default_value=None)
         self.add_argument("nr_cpus",                is_required=True, default_value=1)
