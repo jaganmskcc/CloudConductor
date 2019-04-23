@@ -435,6 +435,7 @@ class CollectReadCounts(_GATKBase):
         self.define_base_args()
         self.add_argument("bam",            is_required=True)
         self.add_argument("bam_idx",        is_required=True)
+        self.add_argument("interval_list",  is_required=True)
         self.add_argument("nr_cpus",        is_required=True,   default_value=1)
         self.add_argument("mem",            is_required=True,   default_value=2)
 
