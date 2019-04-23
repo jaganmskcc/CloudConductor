@@ -1,3 +1,4 @@
+import logging
 
 from Validator import Validator
 
@@ -31,7 +32,9 @@ class GraphValidator(Validator):
             self.__check_graph_config_input(task)
 
             # Check task input
+            logging.debug("-" * 100)
             self.__check_task_input(task)
+            logging.debug("-" * 100)
 
             # Check final output keys
             self.__check_final_output_keys(task)
@@ -134,35 +137,60 @@ class GraphValidator(Validator):
                                       % (task_id, parent_output))
                 parent_output_types.append(parent_output)
 
-
         # Get task arguments that will need to be set at runtime
         args = task.module.get_arguments()
 
         # Check if each argument can be found in any of the sources
         for arg_key, arg_obj in args.iteritems():
 
+            # Priority of checking for argument
+            if arg_obj.is_resource():
+                input_order = ["docker_input", "resource_input", "parent_input", "sample_input", "config_input"]
+            else:
+                input_order = ["parent_input", "docker_input", "resource_input", "sample_input", "config_input"]
+
             # Assume the key is not found
             found = False
 
+            # Define the list of resources from where the input can come
+            input_sources = {
+                "parent_input":     parent_output_types,
+                "sample_input":     self.samples.get_data(),
+                "docker_input":     {} if docker_image is None else docker_image.get_resources(),
+                "resource_input":   self.resources.get_resources(),
+                "config_input" :    config_input
+            }
+            input_source_names = {
+                "parent_input":     "Module_Output",
+                "sample_input":     "Sample_Sheet",
+                "docker_input":     "Docker_Image",
+                "resource_input":     "Resource_Kit",
+                "config_input":     "Pipeline_Graph"
+            }
+
+            # Check if the key is found in any of the above input sources in the correct order
+            for _source in input_order:
+                if input_sources[_source] is not None and arg_key in input_sources[_source]:
+                    logging.debug("Task: {0: >{fill}} | Key: {1: >{fill}} | Input Source: {2: >{fill_large}} |".format(
+                        task_id, arg_key, input_source_names[_source], fill=20, fill_large=30
+                    ))
+                    found = True
+                    break
+            else:
+                if arg_obj.get_default_value() is not None:
+                    logging.debug("Task: {0: >{fill}} | Key: {1: >{fill}} | Input Source: {2: >{fill_large}} |".format(
+                        task_id, arg_key, "Default_Value ({0})".format(arg_obj.get_default_value()), fill=20, fill_large=30
+                    ))
+                else:
+                    logging.debug("Task: {0: >{fill}} | Key: {1: >{fill}} | Input Source: {2: >{fill_large}} |".format(
+                        task_id, arg_key, "Default_Value ({0})".format(arg_obj.get_default_value()), fill=20, fill_large=30
+                    ))
+
             if arg_obj.is_resource():
-
-                # Check if resource key is defined in the resource kit
-                file_resources = self.resources.get_resources()
-                docker_resources = {} if docker_image is None else docker_image.get_resources()
-
-                # Throw error if no resources of the desired type are found in resource kit
-                if arg_key not in file_resources and arg_key not in docker_resources:
-                    if arg_obj.is_mandatory():
-                        self.report_error("In task '%s', the resource argument '%s' has no definition "
-                                            "in the resource config file." % (task_id, arg_key))
-                    else:
-                        self.report_warning("In task '%s', the resource argument '%s' has no definition. "
-                                            "Argument is not required and it will be set to its default value. "
-                                            "If desired, please specify in the graph config for task '%s' which resource '%s' "
-                                            "definition is needed." % (task_id, arg_key, task_id, arg_key))
-
                 # Throw error if required resource has multiple definitions in the same docker image
-                elif arg_key in docker_resources and len(docker_resources[arg_key]) > 1 and arg_key not in config_input:
+                if arg_key in input_sources["docker_input"] \
+                                        and len(input_sources["docker_input"][arg_key]) > 1 \
+                                        and arg_key not in input_sources["config_input"]:
                     if arg_obj.is_mandatory():
                         self.report_error("In module '%s', the resource argument '%s' has multiple definitions in the same docker image. "
                                         "Please specify in the graph config, for task '%s', which resource '%s'"
@@ -174,7 +202,10 @@ class GraphValidator(Validator):
                                             "definition is needed." % (task_id, arg_key, task_id, arg_key))
 
                 # Throw error if required resource has multiple definitions in the resource kit file section
-                elif arg_key in file_resources and len(file_resources[arg_key]) > 1 and arg_key not in config_input and arg_key not in docker_resources:
+                elif arg_key in input_sources["resource_input"] \
+                                        and len(input_sources["resource_input"][arg_key]) > 1 \
+                                        and arg_key not in input_sources["config_input"] \
+                                        and arg_key not in input_sources["docker_input"]:
                     if arg_obj.is_mandatory():
                         self.report_error("In module '%s', the resource argument '%s' has multiple definitions. "
                                         "Please specify in the graph config, for node '%s', which resource '%s'"
@@ -184,22 +215,6 @@ class GraphValidator(Validator):
                                             "Argument is not required and it will be set to its default value. "
                                             "If desired, please specify in the graph config for node '%s' which resource '%s' "
                                             "definition is needed." % (task_id, arg_key, task_id, arg_key))
-                # The resource was found
-                else:
-                    found = True
-
-            else:
-
-                # Define the list of resources from where the input can come
-                input_sources = [parent_output_types,
-                                 self.samples.get_data(),
-                                 config_input]
-
-                # Check if the key is found in any of the above input sources
-                for input_source in input_sources:
-                    if input_source is not None and arg_key in input_source:
-                        found = True
-                        break
 
             # Skip if the argument key has been found
             if found:
