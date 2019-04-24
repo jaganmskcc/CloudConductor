@@ -949,3 +949,70 @@ class CollectAllelicCounts(_GATKBase):
         cmd = "{0} -I {1} -R {2} -L {3} {4} {5}".format(cmd, bam, ref, interval_list, output_file_flag, allelic_counts)
 
         return "{0} !LOG3!".format(cmd)
+
+class ModelSegments(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(ModelSegments, self).__init__(module_id, is_docker)
+        self.output_keys = ["model_begin_seg", "model_final_seg", "cr_seg", "model_begin_af_param",
+                            "model_begin_cr_param", "model_final_af_param", "model_final_cr_param"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("sample_name",        is_required=True)
+        self.add_argument("denoise_copy_ratio", is_required=True)
+        self.add_argument("nr_cpus",            is_required=True, default_value=4)
+        self.add_argument("mem",                is_required=True, default_value=8)
+
+    def define_output(self):
+
+        # Get the sample name to use it in file name creation
+        sample_name = self.get_argument("sample_name")
+
+        # Declare unique file name for a single output file
+        model_begin_seg = self.generate_unique_file_name(extension="{0}.modelBegin.seg".format(sample_name))
+
+        # Split the genereated unique output file name to get prefix to use to generate other output filenames
+        prefix = model_begin_seg.split(".modelBegin.seg")[0]
+
+        # Generate rest of the output file names
+        model_final_seg         = "{0}.modelFinal.seg".format(prefix)
+        cr_seg                  = "{0}.cr.seg".format(prefix)
+        model_begin_af_param    = "{0}.modelBegin.af.param".format(prefix)
+        model_begin_cr_param    = "{0}.modelBegin.cr.param".format(prefix)
+        model_final_af_param    = "{0}.modelFinal.af.param".format(prefix)
+        model_final_cr_param    = "{0}.modelFinal.cr.param".format(prefix)
+
+        # Add output file keys to be returned to Bucket
+        self.add_output("model_begin_seg", model_begin_seg)
+        self.add_output("model_final_seg", model_final_seg)
+        self.add_output("cr_seg", cr_seg)
+        self.add_output("model_begin_af_param", model_begin_af_param)
+        self.add_output("model_begin_cr_param", model_begin_cr_param)
+        self.add_output("model_final_af_param", model_final_af_param)
+        self.add_output("model_final_cr_param", model_final_cr_param)
+
+    def define_command(self):
+        # Get input arguments
+        denoise_copy_ratio = self.get_argument("denoise_copy_ratio")
+
+        # get the prefix for output file names
+        prefix = self.get_output("model_begin_seg").get_filename().split(".modelBegin.seg")[0]
+
+        # Get output directory
+        out_dir = self.get_output_dir()
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Generate the command line for DenoiseReadCounts
+        cmd = "{0} ModelSegments".format(gatk_cmd)
+
+        # add the rest of the arguments to command
+        cmd = "{0} --denoised-copy-ratios {1} --output-prefix {2} {3} {4}".format(cmd, denoise_copy_ratio, prefix,
+                                                                                  output_file_flag, out_dir)
+
+        return "{0} !LOG3!".format(cmd)
