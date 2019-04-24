@@ -1016,3 +1016,49 @@ class ModelSegments(_GATKBase):
                                                                                   output_file_flag, out_dir)
 
         return "{0} !LOG3!".format(cmd)
+
+class CallCopyRatioSegments(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(CallCopyRatioSegments, self).__init__(module_id, is_docker)
+        self.output_keys = ["seg_call"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("sample_name",        is_required=True)
+        self.add_argument("cr_seg",             is_required=True)
+        self.add_argument("nr_cpus",            is_required=True, default_value=4)
+        self.add_argument("mem",                is_required=True, default_value=8)
+
+    def define_output(self):
+
+        # Get the sample name to use it in file name creation
+        sample_name = self.get_argument("sample_name")
+
+        # Declare unique file name for a single output file
+        called_seg = self.generate_unique_file_name(extension="{0}.called.seg".format(sample_name))
+
+        # Add output file keys to be returned to Bucket
+        self.add_output("seg_call", called_seg)
+
+    def define_command(self):
+
+        # Get input arguments
+        cr_seg = self.get_argument("cr_seg")
+
+        # get the prefix for output file name
+        called_seg = self.get_output("seg_call")
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Generate the command line for DenoiseReadCounts
+        cmd = "{0} CallCopyRatioSegments".format(gatk_cmd)
+
+        # add the rest of the arguments to command
+        cmd = "{0} -I {1} {2} {3}".format(cmd, cr_seg, output_file_flag, called_seg)
+
+        return "{0} !LOG3!".format(cmd)
