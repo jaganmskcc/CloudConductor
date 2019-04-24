@@ -1062,3 +1062,58 @@ class CallCopyRatioSegments(_GATKBase):
         cmd = "{0} -I {1} {2} {3}".format(cmd, cr_seg, output_file_flag, called_seg)
 
         return "{0} !LOG3!".format(cmd)
+
+class PlotModeledSegments(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(PlotModeledSegments, self).__init__(module_id, is_docker)
+        self.output_keys = ["model_plot"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("sample_name",        is_required=True)
+        self.add_argument("denoise_copy_ratio", is_required=True)
+        self.add_argument("model_final_seg",    is_required=True)
+        self.add_argument("ref_dict",           is_required=True)
+        self.add_argument("nr_cpus",            is_required=True, default_value=4)
+        self.add_argument("mem",                is_required=True, default_value=8)
+
+    def define_output(self):
+
+        # Get the sample name to use it in file name creation
+        sample_name = self.get_argument("sample_name")
+
+        # Declare unique file name for a single output file
+        modeled_plot = self.generate_unique_file_name(extension="{0}.modeled.png".format(sample_name))
+
+        # Add output file keys to be returned to Bucket
+        self.add_output("model_plot", modeled_plot)
+
+    def define_command(self):
+
+        # Get input arguments
+        denoise_copy_ratio  = self.get_argument("denoise_copy_ratio")
+        model_final_seg     = self.get_argument("model_final_seg")
+        ref_dict            = self.get_argument("ref_dict")
+
+        # get the prefix for output file name
+        prefix = self.get_output("model_plot").get_filename().split(".modeled.png")[0]
+
+        # Get output directory
+        out_dir = self.get_output_dir()
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Generate the command line for DenoiseReadCounts
+        cmd = "{0} PlotModeledSegments".format(gatk_cmd)
+
+        # add the rest of the arguments to command
+        cmd = "{0} --denoised-copy-ratios {1} --segments {2} --sequence-dictionary {3} --output-prefix {4} {5} {6}" \
+              "".format(cmd, denoise_copy_ratio, model_final_seg, ref_dict, prefix, output_file_flag, out_dir)
+
+        return "{0} !LOG3!".format(cmd)
+    
