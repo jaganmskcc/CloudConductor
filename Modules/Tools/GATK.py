@@ -722,3 +722,467 @@ class Mutect2(_GATKBase):
             tumor_status[_id] = _tumor
 
         return tumor_status.keys(), tumor_status.values()
+
+class DepthOfCoverage(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(DepthOfCoverage, self).__init__(module_id, is_docker)
+        self.prefix         = None
+        self.output_keys    = ["per_base_summary", "interval_summary", "interval_statistics", "sample_summary",
+                               "sample_statistics", "cumulative_coverage_counts", "cumulative_coverage_proportions"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("bam",            is_required=True)
+        self.add_argument("bam_idx",        is_required=True)
+        self.add_argument("ref",            is_required=True, is_resource=True)
+        self.add_argument("interval_list",  is_required=False, is_resource=True)
+        self.add_argument("gene_list",      is_required=False, default_value=None)
+        self.add_argument("read_group",     is_required=False, default_value=None)
+        self.add_argument("nr_cpus",        is_required=True, default_value=2)
+        self.add_argument("mem",            is_required=True, default_value=4)
+
+    def define_output(self):
+        # Declare unique file name for a single output file
+        per_base_summary = self.generate_unique_file_name(extension=".per_base_summary.txt")
+
+        # Split the genereated unique output file name to get prefix to use to generate other output filenames
+        self.prefix = per_base_summary.split(".per_base_summary.txt")[0]
+
+        # Generate rest of the output file names
+        interval_summary                = "{0}.sample_interval_summary".format(self.prefix)
+        interval_statistics             = "{0}.sample_interval_statistics".format(self.prefix)
+        sample_summary                  = "{0}.sample_summary".format(self.prefix)
+        sample_statistics               = "{0}.sample_statistics".format(self.prefix)
+        cumulative_coverage_counts      = "{0}.sample_cumulative_coverage_counts".format(self.prefix)
+        cumulative_coverage_proportions = "{0}.sample_cumulative_coverage_proportions".format(self.prefix)
+
+        self.add_output("per_base_summary", self.prefix)
+        self.add_output("interval_summary", interval_summary)
+        self.add_output("interval_statistics", interval_statistics)
+        self.add_output("sample_summary", sample_summary)
+        self.add_output("sample_statistics", sample_statistics)
+        self.add_output("cumulative_coverage_counts", cumulative_coverage_counts)
+        self.add_output("cumulative_coverage_proportions", cumulative_coverage_proportions)
+
+    def define_command(self):
+        # Get input arguments
+        bam             = self.get_argument("bam")
+        ref             = self.get_argument("ref")
+        interval_list   = self.get_argument("interval_list")
+        gene_list       = self.get_argument("gene_list")
+        read_group      = self.get_argument("read_group")
+
+        # Get base GATK command line
+        gatk_cmd = self.get_gatk_command()
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Generate the command line for DepthOfCoverage
+        cmd = "{0} DepthOfCoverage -I {1} -R {2} -ct 1 -ct 10 -ct 25 -ct 50 -ct 75 -ct 100 -ct 150 -ct 200 -ct 250 " \
+              "-ct 500 {3} {4}".format(gatk_cmd, bam, ref, output_file_flag, self.prefix)
+
+        if interval_list is not None:
+            cmd = "{0} -L {1}".format(cmd, interval_list)
+
+        if gene_list is not None:
+            cmd = "{0} -geneList {1}".format(cmd, gene_list)
+
+        if read_group is not None:
+            cmd = "{0} -pt {1}".format(cmd, read_group)
+
+        return "{0} !LOG3!".format(cmd)
+
+
+class PreprocessIntervals(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(PreprocessIntervals, self).__init__(module_id, is_docker)
+        self.output_keys = ["interval_list"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("bin_length", is_required=True, default_value=0)
+        self.add_argument("nr_cpus", is_required=True, default_value=1)
+        self.add_argument("mem", is_required=True, default_value=2)
+
+    def define_output(self):
+        # Declare interval list output filename
+        interval_list = self.generate_unique_file_name(extension=".interval.list")
+        self.add_output("interval_list", interval_list)
+
+    def define_command(self):
+        # Get input arguments
+        L = self.get_argument("location")
+        bin_length = self.get_argument("bin_length")
+        ref = self.get_argument("ref")
+
+        # Get output arguments
+        interval_list = self.get_output("interval_list")
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Generate the command line for PreProcessIntervals
+        cmd = "{0} PreprocessIntervals -R {1} --bin-length {2} {3} {4}".format(gatk_cmd, ref, bin_length,
+                                                                               output_file_flag, interval_list)
+
+        # pass the location to include in the processing
+        if L is not None:
+            cmd = "{0} -L {1} --interval-merging-rule OVERLAPPING_ONLY".format(cmd, L)
+
+        return "{0} !LOG3!".format(cmd)
+
+
+class DenoiseReadCounts(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(DenoiseReadCounts, self).__init__(module_id, is_docker)
+        self.output_keys = ["std_copy_ratio", "denoise_copy_ratio"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("read_count_out", is_required=True)
+        self.add_argument("pon", is_required=False, is_resource=True, default_value=None)
+        self.add_argument("annotated_intervals", is_required=False, default_value=None)
+        self.add_argument("number_of_eigensamples", is_required=False, default_value=None)
+        self.add_argument("nr_cpus", is_required=True, default_value=1)
+        self.add_argument("mem", is_required=True, default_value=2)
+
+    def define_output(self):
+        # Declare output filename for copy ratio
+        std_copy_ratio = self.generate_unique_file_name(extension=".standardizedCR.txt")
+        denoise_copy_ratio = self.generate_unique_file_name(extension=".denoisedCR.txt")
+        self.add_output("std_copy_ratio", std_copy_ratio)
+        self.add_output("denoise_copy_ratio", denoise_copy_ratio)
+
+    def define_command(self):
+        # Get input arguments
+        read_count_out = self.get_argument("read_count_out")
+        pon = self.get_argument("pon")
+        annotated_intervals = self.get_argument("annotated_intervals")
+        eigensamples = self.get_argument("number_of_eigensamples")
+
+        # Get output arguments
+        std_copy_ratio = self.get_output("std_copy_ratio")
+        denoise_copy_ratio = self.get_output("denoise_copy_ratio")
+
+        if pon is not None and annotated_intervals is not None:
+            logging.error("PoN and annotated intervals both can not be provided at the same time.")
+            raise NotImplementedError("PoN and annotated intervals both can not be provided at the same time.")
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Generate the command line for DenoiseReadCounts
+        cmd = "{0} DenoiseReadCounts".format(gatk_cmd)
+
+        # if the Panel of Normal is provided, denoise the read count using it
+        if pon:
+            cmd = "{0} --count-panel-of-normals {1}".format(cmd, pon)
+
+        # if the annotated interval is provided, denoise the read count using it
+        if annotated_intervals:
+            cmd = "{0} --annotated-intervals {1}".format(cmd, annotated_intervals)
+
+        # if the number of eigne samples is provided, use them for denoising
+        if eigensamples:
+            cmd = "{0} --number-of-eigensamples {1}".format(cmd, eigensamples)
+
+        # add the rest of the arguments to command
+        cmd = "{0} -I {1} --standardized-copy-ratios {2} --denoised-copy-ratios {3}".format(cmd, read_count_out,
+                                                                                            std_copy_ratio,
+                                                                                            denoise_copy_ratio)
+
+        return "{0} !LOG3!".format(cmd)
+
+
+class PlotDenoisedCopyRatios(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(PlotDenoisedCopyRatios, self).__init__(module_id, is_docker)
+        self.output_keys = ["denoised_plot", "denoised_plot_lm4", "std_mad", "denoised_mad", "delta_mad",
+                            "scale_delta_mad"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("sample_name", is_required=True)
+        self.add_argument("std_copy_ratio", is_required=True)
+        self.add_argument("denoise_copy_ratio", is_required=False, default_value=None)
+        self.add_argument("ref_dict", is_required=False, is_resource=True)
+        self.add_argument("min_contig_len", is_required=False, default_value=46709983)
+        self.add_argument("nr_cpus", is_required=True, default_value=1)
+        self.add_argument("mem", is_required=True, default_value=2)
+
+    def define_output(self):
+        # Get the sample name to use it in file name creation
+        sample_name = self.get_argument("sample_name")
+
+        # Declare unique file name for a single output file
+        denoised_plot = self.generate_unique_file_name(extension="{0}.denoised.png".format(sample_name))
+
+        # Split the genereated unique output file name to get prefix to use to generate other output filenames
+        prefix = denoised_plot.split(".denoised.png")[0]
+
+        # Generate rest of the output file names
+        denoised_plot_lm4 = "{0}.denoisedLimit4.png".format(prefix)
+        std_mad = "{0}.standardizedMAD.txt".format(prefix)
+        denoised_mad = "{0}.denoisedMAD.txt".format(prefix)
+        delta_mad = "{0}.deltaMAD.txt".format(prefix)
+        scale_delta_mad = "{0}.scaledDeltaMAD.txt".format(prefix)
+
+        # Add output file keys to be returned to Bucket
+        self.add_output("denoised_plot", denoised_plot)
+        self.add_output("denoised_plot_lm4", denoised_plot_lm4)
+        self.add_output("std_mad", std_mad)
+        self.add_output("denoised_mad", denoised_mad)
+        self.add_output("delta_mad", delta_mad)
+        self.add_output("scale_delta_mad", scale_delta_mad)
+
+    def define_command(self):
+        # Get input arguments
+        std_copy_ratio = self.get_argument("std_copy_ratio")
+        denoise_copy_ratio = self.get_argument("denoise_copy_ratio")
+        ref_dict = self.get_argument("ref_dict")
+        min_contig_len = self.get_argument("min_contig_len")
+
+        # get the prefix for output file names
+        prefix = self.get_output("denoised_plot").get_filename().split(".denoised.png")[0]
+
+        # Get output directory
+        out_dir = self.get_output_dir()
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Generate the command line for DenoiseReadCounts
+        cmd = "{0} PlotDenoisedCopyRatios".format(gatk_cmd)
+
+        # add the rest of the arguments to command
+        cmd = "{0} --standardized-copy-ratios {1} --denoised-copy-ratios {2} --sequence-dictionary {3} " \
+              "--minimum-contig-length {4} --output-prefix {5} {6} {7}".format(cmd, std_copy_ratio, denoise_copy_ratio,
+                                                                               ref_dict, min_contig_len, prefix,
+                                                                               output_file_flag, out_dir)
+
+        return "{0} !LOG3!".format(cmd)
+
+
+class CollectAllelicCounts(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(CollectAllelicCounts, self).__init__(module_id, is_docker)
+        self.output_keys = ["allelic_counts"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("sample_name", is_required=True)
+        self.add_argument("bam", is_required=True)
+        self.add_argument("bam_idx", is_required=True)
+        self.add_argument("ref", is_required=True, is_resource=True)
+        self.add_argument("interval_list", is_required=True)
+        self.add_argument("nr_cpus", is_required=True, default_value=8)
+        self.add_argument("mem", is_required=True, default_value=30)
+
+    def define_output(self):
+        # Get the sample name to use it in file name creation
+        sample_name = self.get_argument("sample_name")
+
+        # Declare unique file name for a single output file
+        allelic_counts = self.generate_unique_file_name(extension="{0}.allelicCounts.txt".format(sample_name))
+
+        self.add_output("allelic_counts", allelic_counts)
+
+    def define_command(self):
+        # Get input arguments
+        bam = self.get_argument("bam")
+        ref = self.get_argument("ref")
+        interval_list = self.get_argument("interval_list")
+
+        # get the prefix for output file names
+        allelic_counts = self.get_output("allelic_counts")
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Generate the command line for DenoiseReadCounts
+        cmd = "{0} CollectAllelicCounts".format(gatk_cmd)
+
+        # add the rest of the arguments to command
+        cmd = "{0} -I {1} -R {2} -L {3} {4} {5}".format(cmd, bam, ref, interval_list, output_file_flag, allelic_counts)
+
+        return "{0} !LOG3!".format(cmd)
+
+
+class ModelSegments(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(ModelSegments, self).__init__(module_id, is_docker)
+        self.output_keys = ["model_begin_seg", "model_final_seg", "cr_seg", "model_begin_af_param",
+                            "model_begin_cr_param", "model_final_af_param", "model_final_cr_param"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("sample_name", is_required=True)
+        self.add_argument("denoise_copy_ratio", is_required=True)
+        self.add_argument("nr_cpus", is_required=True, default_value=4)
+        self.add_argument("mem", is_required=True, default_value=8)
+
+    def define_output(self):
+        # Get the sample name to use it in file name creation
+        sample_name = self.get_argument("sample_name")
+
+        # Declare unique file name for a single output file
+        model_begin_seg = self.generate_unique_file_name(extension="{0}.modelBegin.seg".format(sample_name))
+
+        # Split the genereated unique output file name to get prefix to use to generate other output filenames
+        prefix = model_begin_seg.split(".modelBegin.seg")[0]
+
+        # Generate rest of the output file names
+        model_final_seg = "{0}.modelFinal.seg".format(prefix)
+        cr_seg = "{0}.cr.seg".format(prefix)
+        model_begin_af_param = "{0}.modelBegin.af.param".format(prefix)
+        model_begin_cr_param = "{0}.modelBegin.cr.param".format(prefix)
+        model_final_af_param = "{0}.modelFinal.af.param".format(prefix)
+        model_final_cr_param = "{0}.modelFinal.cr.param".format(prefix)
+
+        # Add output file keys to be returned to Bucket
+        self.add_output("model_begin_seg", model_begin_seg)
+        self.add_output("model_final_seg", model_final_seg)
+        self.add_output("cr_seg", cr_seg)
+        self.add_output("model_begin_af_param", model_begin_af_param)
+        self.add_output("model_begin_cr_param", model_begin_cr_param)
+        self.add_output("model_final_af_param", model_final_af_param)
+        self.add_output("model_final_cr_param", model_final_cr_param)
+
+    def define_command(self):
+        # Get input arguments
+        denoise_copy_ratio = self.get_argument("denoise_copy_ratio")
+
+        # get the prefix for output file names
+        prefix = self.get_output("model_begin_seg").get_filename().split(".modelBegin.seg")[0]
+
+        # Get output directory
+        out_dir = self.get_output_dir()
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Generate the command line for DenoiseReadCounts
+        cmd = "{0} ModelSegments".format(gatk_cmd)
+
+        # add the rest of the arguments to command
+        cmd = "{0} --denoised-copy-ratios {1} --output-prefix {2} {3} {4}".format(cmd, denoise_copy_ratio, prefix,
+                                                                                  output_file_flag, out_dir)
+
+        return "{0} !LOG3!".format(cmd)
+
+
+class CallCopyRatioSegments(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(CallCopyRatioSegments, self).__init__(module_id, is_docker)
+        self.output_keys = ["seg_call"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("sample_name", is_required=True)
+        self.add_argument("cr_seg", is_required=True)
+        self.add_argument("nr_cpus", is_required=True, default_value=4)
+        self.add_argument("mem", is_required=True, default_value=8)
+
+    def define_output(self):
+        # Get the sample name to use it in file name creation
+        sample_name = self.get_argument("sample_name")
+
+        # Declare unique file name for a single output file
+        called_seg = self.generate_unique_file_name(extension="{0}.called.seg".format(sample_name))
+
+        # Add output file keys to be returned to Bucket
+        self.add_output("seg_call", called_seg)
+
+    def define_command(self):
+        # Get input arguments
+        cr_seg = self.get_argument("cr_seg")
+
+        # get the prefix for output file name
+        called_seg = self.get_output("seg_call")
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Generate the command line for DenoiseReadCounts
+        cmd = "{0} CallCopyRatioSegments".format(gatk_cmd)
+
+        # add the rest of the arguments to command
+        cmd = "{0} -I {1} {2} {3}".format(cmd, cr_seg, output_file_flag, called_seg)
+
+        return "{0} !LOG3!".format(cmd)
+
+
+class PlotModeledSegments(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(PlotModeledSegments, self).__init__(module_id, is_docker)
+        self.output_keys = ["model_plot"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("sample_name", is_required=True)
+        self.add_argument("denoise_copy_ratio", is_required=True)
+        self.add_argument("model_final_seg", is_required=True)
+        self.add_argument("ref_dict", is_required=True)
+        self.add_argument("nr_cpus", is_required=True, default_value=4)
+        self.add_argument("mem", is_required=True, default_value=8)
+
+    def define_output(self):
+        # Get the sample name to use it in file name creation
+        sample_name = self.get_argument("sample_name")
+
+        # Declare unique file name for a single output file
+        modeled_plot = self.generate_unique_file_name(extension="{0}.modeled.png".format(sample_name))
+
+        # Add output file keys to be returned to Bucket
+        self.add_output("model_plot", modeled_plot)
+
+    def define_command(self):
+        # Get input arguments
+        denoise_copy_ratio = self.get_argument("denoise_copy_ratio")
+        model_final_seg = self.get_argument("model_final_seg")
+        ref_dict = self.get_argument("ref_dict")
+
+        # get the prefix for output file name
+        prefix = self.get_output("model_plot").get_filename().split(".modeled.png")[0]
+
+        # Get output directory
+        out_dir = self.get_output_dir()
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Generate the command line for DenoiseReadCounts
+        cmd = "{0} PlotModeledSegments".format(gatk_cmd)
+
+        # add the rest of the arguments to command
+        cmd = "{0} --denoised-copy-ratios {1} --segments {2} --sequence-dictionary {3} --output-prefix {4} {5} {6}" \
+              "".format(cmd, denoise_copy_ratio, model_final_seg, ref_dict, prefix, output_file_flag, out_dir)
+
+        return "{0} !LOG3!".format(cmd)

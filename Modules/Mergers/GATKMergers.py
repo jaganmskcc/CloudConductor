@@ -352,3 +352,75 @@ class GenomicsDBImport(PseudoMerger):
 
         # Generate command to make genomicsDB directory and run job
         return "rm -rf {0} ; {1} GenomicsDBImport {2} !LOG3!".format(genomicsDB, gatk_cmd, " ".join(opts))
+
+class CreateReadCountPanelOfNormals(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(CreateReadCountPanelOfNormals, self).__init__(module_id, is_docker)
+        self.output_keys = ["pon"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("read_count_out",                         is_required=True)
+        self.add_argument("annotated_intervals",                    is_required=False, default_value=None)
+        self.add_argument("do_impute_zeros",                        is_required=False, default_value=True)
+        self.add_argument("extreme_outlier_truncation_percentile",  is_required=False, default_value=0.1)
+        self.add_argument("extreme_sample_median_percentile",       is_required=False, default_value=2.5)
+        self.add_argument("maximum_zeros_in_interval_percentage",   is_required=False, default_value=5.0)
+        self.add_argument("maximum_zeros_in_sample_percentage",     is_required=False, default_value=5.0)
+        self.add_argument("minimum_interval_median_percentile",     is_required=False, default_value=10.0)
+        self.add_argument("number_of_eigensamples",                 is_required=False, default_value=20)
+        self.add_argument("nr_cpus",        is_required=True, default_value=1)
+        self.add_argument("mem",            is_required=True, default_value=2)
+
+    def define_output(self):
+        # Declare PoN output filename
+        pon = self.generate_unique_file_name(extension=".pon.hdf5")
+        self.add_output("pon", pon)
+
+    def define_command(self):
+        # Get input arguments
+        read_count_out                          = self.get_argument("read_count_out")
+        annotated_intervals                     = self.get_argument("annotated_intervals")
+        do_impute_zeros                         = self.get_argument("do_impute_zeros")
+        extreme_outlier_truncation_percentile   = self.get_argument("extreme_outlier_truncation_percentile")
+        extreme_sample_median_percentile        = self.get_argument("extreme_sample_median_percentile")
+        max_zeros_in_interval_percentage        = self.get_argument("maximum_zeros_in_interval_percentage")
+        max_zeros_in_sample_percentage          = self.get_argument("maximum_zeros_in_sample_percentage")
+        min_interval_median_percentile          = self.get_argument("minimum_interval_median_percentile")
+        eigensamples                            = self.get_argument("number_of_eigensamples")
+
+        # Get output arguments
+        pon = self.get_output("pon")
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Get GATK base command
+        gatk_cmd = self.get_gatk_command()
+
+        # Generate the command line for CreateReadCountPanelOfNormals
+        cmd = "{0} CreateReadCountPanelOfNormals".format(gatk_cmd)
+
+        # If the read count is a list create a list of input files
+        if isinstance(read_count_out, list):
+            cmd = "{0} -I {1}".format(cmd, ' -I '.join(read_count_out))
+        else:
+            cmd = "{0} -I {1}".format(cmd, read_count_out)
+
+        # If annotated interval file is provided, use it in the cmd line
+        if annotated_intervals is not None:
+            cmd = "{0} --annotated-intervals {1}".format(cmd, annotated_intervals)
+
+        # If impute zero-coverage false, set the flag to false
+        if not do_impute_zeros:
+            cmd = "{0} --do-impute-zeros {1}".format(cmd, do_impute_zeros)
+
+        cmd = "{0} --extreme-outlier-truncation-percentile {1} --extreme-sample-median-percentile {2} " \
+              "--maximum-zeros-in-interval-percentage {3} --maximum-zeros-in-sample-percentage {4} " \
+              "--minimum-interval-median-percentile {5} --number-of-eigensamples {6} {7} {8}".\
+            format(cmd, extreme_outlier_truncation_percentile, extreme_sample_median_percentile,
+                   max_zeros_in_interval_percentage, max_zeros_in_sample_percentage, min_interval_median_percentile,
+                   eigensamples, output_file_flag, pon)
+
+        return "{0} !LOG3!".format(cmd)
