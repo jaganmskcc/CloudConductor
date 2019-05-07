@@ -722,3 +722,74 @@ class Mutect2(_GATKBase):
             tumor_status[_id] = _tumor
 
         return tumor_status.keys(), tumor_status.values()
+
+class DepthOfCoverage(_GATKBase):
+
+    def __init__(self, module_id, is_docker=False):
+        super(DepthOfCoverage, self).__init__(module_id, is_docker)
+        self.prefix         = None
+        self.output_keys    = ["per_base_summary", "interval_summary", "interval_statistics", "sample_summary",
+                               "sample_statistics", "cumulative_coverage_counts", "cumulative_coverage_proportions"]
+
+    def define_input(self):
+        self.define_base_args()
+        self.add_argument("bam",            is_required=True)
+        self.add_argument("bam_idx",        is_required=True)
+        self.add_argument("ref",            is_required=True, is_resource=True)
+        self.add_argument("interval_list",  is_required=False, is_resource=True)
+        self.add_argument("gene_list",      is_required=False, default_value=None)
+        self.add_argument("read_group",     is_required=False, default_value=None)
+        self.add_argument("nr_cpus",        is_required=True, default_value=2)
+        self.add_argument("mem",            is_required=True, default_value=4)
+
+    def define_output(self):
+        # Declare unique file name for a single output file
+        per_base_summary = self.generate_unique_file_name(extension=".per_base_summary.txt")
+
+        # Split the genereated unique output file name to get prefix to use to generate other output filenames
+        self.prefix = per_base_summary.split(".per_base_summary.txt")[0]
+
+        # Generate rest of the output file names
+        interval_summary                = "{0}.sample_interval_summary".format(self.prefix)
+        interval_statistics             = "{0}.sample_interval_statistics".format(self.prefix)
+        sample_summary                  = "{0}.sample_summary".format(self.prefix)
+        sample_statistics               = "{0}.sample_statistics".format(self.prefix)
+        cumulative_coverage_counts      = "{0}.sample_cumulative_coverage_counts".format(self.prefix)
+        cumulative_coverage_proportions = "{0}.sample_cumulative_coverage_proportions".format(self.prefix)
+
+        self.add_output("per_base_summary", self.prefix)
+        self.add_output("interval_summary", interval_summary)
+        self.add_output("interval_statistics", interval_statistics)
+        self.add_output("sample_summary", sample_summary)
+        self.add_output("sample_statistics", sample_statistics)
+        self.add_output("cumulative_coverage_counts", cumulative_coverage_counts)
+        self.add_output("cumulative_coverage_proportions", cumulative_coverage_proportions)
+
+    def define_command(self):
+        # Get input arguments
+        bam             = self.get_argument("bam")
+        ref             = self.get_argument("ref")
+        interval_list   = self.get_argument("interval_list")
+        gene_list       = self.get_argument("gene_list")
+        read_group      = self.get_argument("read_group")
+
+        # Get base GATK command line
+        gatk_cmd = self.get_gatk_command()
+
+        # Get the output file flag depends on GATK version
+        output_file_flag = self.get_output_file_flag()
+
+        # Generate the command line for DepthOfCoverage
+        cmd = "{0} DepthOfCoverage -I {1} -R {2} -ct 1 -ct 10 -ct 25 -ct 50 -ct 75 -ct 100 -ct 150 -ct 200 -ct 250 " \
+              "-ct 500 {3} {4}".format(gatk_cmd, bam, ref, output_file_flag, self.prefix)
+
+        if interval_list is not None:
+            cmd = "{0} -L {1}".format(cmd, interval_list)
+
+        if gene_list is not None:
+            cmd = "{0} -geneList {1}".format(cmd, gene_list)
+
+        if read_group is not None:
+            cmd = "{0} -pt {1}".format(cmd, read_group)
+
+        return "{0} !LOG3!".format(cmd)
