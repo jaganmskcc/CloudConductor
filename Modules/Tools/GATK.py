@@ -739,6 +739,7 @@ class DepthOfCoverage(_GATKBase):
         self.add_argument("interval_list",  is_required=False, is_resource=True)
         self.add_argument("gene_list",      is_required=False, default_value=None)
         self.add_argument("read_group",     is_required=False, default_value=None)
+        self.add_argument("unsafe",         is_required=False, default_value='ALLOW_N_CIGAR_READS')
         self.add_argument("nr_cpus",        is_required=True, default_value=2)
         self.add_argument("mem",            is_required=True, default_value=4)
 
@@ -772,6 +773,7 @@ class DepthOfCoverage(_GATKBase):
         interval_list   = self.get_argument("interval_list")
         gene_list       = self.get_argument("gene_list")
         read_group      = self.get_argument("read_group")
+        unsafe          = self.get_argument("unsafe")
 
         # Get base GATK command line
         gatk_cmd = self.get_gatk_command()
@@ -791,6 +793,14 @@ class DepthOfCoverage(_GATKBase):
 
         if read_group is not None:
             cmd = "{0} -pt {1}".format(cmd, read_group)
+
+        if unsafe != 'ALLOW_N_CIGAR_READS':
+            logging.error("Provided unsafe operation {0} is not allowed. Only 'ALLOW_N_CIGAR_READS' operation is "
+                          "allowed.".format(unsafe))
+            raise NotImplementedError("Invalid unsafe operation for DepthOfCoverage.")
+
+        if unsafe:
+            cmd = "{0} --unsafe {1}".format(cmd, unsafe)
 
         return "{0} !LOG3!".format(cmd)
 
