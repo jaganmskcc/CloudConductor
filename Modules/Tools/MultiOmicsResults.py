@@ -5,7 +5,7 @@ class MultiOmicsResults(Module):
     def __init__(self, module_id, is_docker = False):
         super(MultiOmicsResults, self).__init__(module_id, is_docker)
         self.output_keys = ["all_variants", "filter_variants_text", "filter_variants_json",
-                            "subset_filter_variants_text", "exp_subset", "coo_genes", "expr_subser_coo",
+                            "subset_filter_variants_text", "expr_subset", "coo_genes", "expr_subset_coo",
                             "coo_classification", "myc_bcl2_expr", "input_features", "input_combos",
                             "dist_hist_similar_patients", "survival_similar_risk"]
 
