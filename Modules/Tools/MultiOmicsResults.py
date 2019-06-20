@@ -11,10 +11,10 @@ class MultiOmicsResults(Module):
 
     def define_input(self):
         self.add_argument("sample_name",                is_required=True)
-        self.add_argument("annotated_expression_file",  is_required=True)
+        self.add_argument("annotated_expression_file",  is_required=False, default_value=None)
+        self.add_argument("recoded_vcf",                is_required=False, default_value=None)
         self.add_argument("ref_expr",                   is_required=False, is_resource=True, default_value=None)
         self.add_argument("ref_cell_model",             is_required=False, is_resource=True, default_value=None)
-        self.add_argument("recoded_vcf",                is_required=True)
         self.add_argument("mutation_level",             is_required=False, default_value=0.3)
         self.add_argument("wt",                         is_required=False, default_value=-0.4)
         self.add_argument("myc_expr_threshold",         is_required=False, default_value=0.5)
@@ -68,15 +68,21 @@ class MultiOmicsResults(Module):
         output_prefix = os.path.join(output_dir, sample)
 
         if not self.is_docker:
-            cmd = "sudo Rscript --vanilla {0} -e {1} -m {2} -s {3} -o {4} --recodemutlevel={5} " \
-                  "--recodewtlevel={6} --mycexprthreshold={7} --bcl2exprthreshold={8}".format(
-                meta_script, annotated_expression_file, recoded_vcf, sample, output_prefix, mutation_level, wt,
-                myc_expr_threshold, bcl2_expr_threshold)
+            cmd = "sudo Rscript --vanilla {0} -s {1} -o {2} --recodemutlevel={3} --recodewtlevel={4} " \
+                  "--mycexprthreshold={5} --bcl2exprthreshold={6}".format(meta_script, sample, output_prefix,
+                                                                          mutation_level, wt, myc_expr_threshold,
+                                                                          bcl2_expr_threshold)
         else:
-            cmd = "Rscript --vanilla {0} -e {1} -m {2} -s {3} -o {4} --recodemutlevel={5} " \
-                  "--recodewtlevel={6} --mycexprthreshold={7} --bcl2exprthreshold={8}".format(
-                meta_script, annotated_expression_file, recoded_vcf, sample, output_prefix, mutation_level, wt,
-                myc_expr_threshold, bcl2_expr_threshold)
+            cmd = "Rscript --vanilla {0} -s {1} -o {2} --recodemutlevel={3} --recodewtlevel={4} " \
+                  "--mycexprthreshold={5} --bcl2exprthreshold={6}".format(meta_script, sample, output_prefix,
+                                                                          mutation_level, wt, myc_expr_threshold,
+                                                                          bcl2_expr_threshold)
+
+        if annotated_expression_file is not None:
+            cmd = "{0} -e {1}".format(cmd, annotated_expression_file)
+
+        if recoded_vcf is not None:
+            cmd = "{0} -m {1}".format(cmd, recoded_vcf)
 
         if ref_expr is not None:
             cmd = "{0} --refexpr {1}".format(cmd, ref_expr)
