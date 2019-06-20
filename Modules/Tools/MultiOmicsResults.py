@@ -12,6 +12,8 @@ class MultiOmicsResults(Module):
     def define_input(self):
         self.add_argument("sample_name",                is_required=True)
         self.add_argument("annotated_expression_file",  is_required=True)
+        self.add_argument("ref_expr",                   is_required=False, is_resource=True, default_value=None)
+        self.add_argument("ref_cell_model",             is_required=False, is_resource=True, default_value=None)
         self.add_argument("recoded_vcf",                is_required=True)
         self.add_argument("mutation_level",             is_required=False, default_value=0.3)
         self.add_argument("wt",                         is_required=False, default_value=-0.4)
@@ -50,6 +52,8 @@ class MultiOmicsResults(Module):
         # Get arguments
         sample                      = self.get_argument("sample_name")
         annotated_expression_file   = self.get_argument("annotated_expression_file")
+        ref_expr                    = self.get_argument("ref_expr")
+        ref_cell_model              = self.get_argument("ref_cell_model")
         recoded_vcf                 = self.get_argument("recoded_vcf")
         mutation_level              = self.get_argument("mutation_level")
         wt                          = self.get_argument("wt")
@@ -65,13 +69,21 @@ class MultiOmicsResults(Module):
 
         if not self.is_docker:
             cmd = "sudo Rscript --vanilla {0} -e {1} -m {2} -s {3} -o {4} --recodemutlevel={5} " \
-                  "--recodewtlevel={6} --mycexprthreshold={7} --bcl2exprthreshold={8} !LOG3!".format(
+                  "--recodewtlevel={6} --mycexprthreshold={7} --bcl2exprthreshold={8}".format(
                 meta_script, annotated_expression_file, recoded_vcf, sample, output_prefix, mutation_level, wt,
                 myc_expr_threshold, bcl2_expr_threshold)
         else:
             cmd = "Rscript --vanilla {0} -e {1} -m {2} -s {3} -o {4} --recodemutlevel={5} " \
-                  "--recodewtlevel={6} --mycexprthreshold={7} --bcl2exprthreshold={8} !LOG3!".format(
+                  "--recodewtlevel={6} --mycexprthreshold={7} --bcl2exprthreshold={8}".format(
                 meta_script, annotated_expression_file, recoded_vcf, sample, output_prefix, mutation_level, wt,
                 myc_expr_threshold, bcl2_expr_threshold)
+
+        if ref_expr is not None:
+            cmd = "{0} --refexpr {1}".format(cmd, ref_expr)
+
+        if ref_cell_model is not None:
+            cmd = "{0} --refcellmodel {1}".format(cmd, ref_cell_model)
+
+        cmd = "{0} !LOG3!".format(cmd)
 
         return cmd
