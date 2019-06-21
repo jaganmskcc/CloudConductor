@@ -25,27 +25,36 @@ class MultiOmicsResults(Module):
 
     def define_output(self):
 
-        # Get the sample name
-        sample_name = self.get_argument("sample_name")
+        # Get the input argument for decision making
+        sample_name                 = self.get_argument("sample_name")
+        recoded_vcf                 = self.get_argument("recoded_vcf")
+        annotated_expression_file   = self.get_argument("annotated_expression_file")
 
         # generate the output prefix
         output_dir = self.get_output_dir()
         output_prefix = os.path.join(output_dir, sample_name)
         
-        # Declare output file name
-        self.add_output("filter_variants_text", "{0}_filtered_variants.txt".format(output_prefix))
-        self.add_output("filter_variants_json", "{0}_filtered_variants.json".format(output_prefix))
-        self.add_output("subset_filter_variants_text", "{0}_filtered_variants_subset.txt".format(output_prefix))
-        self.add_output("all_variants", "{0}_all_variants_with_filters.txt".format(output_prefix))
-        self.add_output("expr_subset", "{0}_expr_subset.txt".format(output_prefix))
-        self.add_output("coo_genes", "{0}_COO_genes.pdf".format(output_prefix))
-        self.add_output("expr_subset_coo", "{0}_expr_subset_COO.json".format(output_prefix))
-        self.add_output("coo_classification", "{0}_COO_classification.json".format(output_prefix))
-        self.add_output("myc_bcl2_expr", "{0}_MYC_BCL2_expr.pdf".format(output_prefix))
-        self.add_output("input_features", "{0}_input_features.txt".format(output_prefix))
-        self.add_output("input_combos", "{0}_input_combos.txt".format(output_prefix))
-        self.add_output("dist_hist_similar_patients", "{0}_distribution_hist_similar_patients.pdf".format(output_prefix))
-        self.add_output("survival_similar_risk", "{0}_survival_similar_risk.pdf".format(output_prefix))
+        # Declare output file names for variants
+        if recoded_vcf is not None:
+            self.add_output("filter_variants_text", "{0}_filtered_variants.txt".format(output_prefix))
+            self.add_output("filter_variants_json", "{0}_filtered_variants.json".format(output_prefix))
+            self.add_output("subset_filter_variants_text", "{0}_filtered_variants_subset.txt".format(output_prefix))
+            self.add_output("all_variants", "{0}_all_variants_with_filters.txt".format(output_prefix))
+
+        # Declare output file names for expression
+        if annotated_expression_file is not None:
+            self.add_output("expr_subset", "{0}_expr_subset.txt".format(output_prefix))
+            self.add_output("coo_genes", "{0}_COO_genes.pdf".format(output_prefix))
+            self.add_output("expr_subset_coo", "{0}_expr_subset_COO.json".format(output_prefix))
+            self.add_output("coo_classification", "{0}_COO_classification.json".format(output_prefix))
+            self.add_output("myc_bcl2_expr", "{0}_MYC_BCL2_expr.pdf".format(output_prefix))
+
+        # Declate output file names when variants and expression both data are available
+        if recoded_vcf is not None and annotated_expression_file is not None:
+            self.add_output("input_features", "{0}_input_features.txt".format(output_prefix))
+            self.add_output("input_combos", "{0}_input_combos.txt".format(output_prefix))
+            self.add_output("dist_hist_similar_patients", "{0}_distribution_hist_similar_patients.pdf".format(output_prefix))
+            self.add_output("survival_similar_risk", "{0}_survival_similar_risk.pdf".format(output_prefix))
 
     def define_command(self):
 
