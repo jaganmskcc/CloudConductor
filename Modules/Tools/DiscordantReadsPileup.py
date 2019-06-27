@@ -41,6 +41,8 @@ class DiscordantReadsPileup(Module):
             sample_name = set(sample_name)
             if len(sample_name) != 1:
                 logging.error("More than one unique sample provided. Please only run one sample at a time.")
+                raise RuntimeError("More than one unique sample provided. Please only run one sample at a time!")
+
             sample_name = list(sample_name)[0]
 
         output_prefix = os.path.join(output_dir, sample_name)
