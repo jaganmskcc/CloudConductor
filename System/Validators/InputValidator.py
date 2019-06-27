@@ -1,6 +1,6 @@
 import logging
 
-from Validator import Validator
+from .Validator import Validator
 from System.Workers import ThreadPool, PoolWorker
 from System.Datastore import GAPFile
 from System.Platform import StorageHelper, DockerHelper
@@ -98,14 +98,14 @@ class InputValidator(Validator):
 
     def __get_docker_images(self):
         # Return list of docker images in resource kit
-        return self.resources.get_docker_images().values()
+        return list(self.resources.get_docker_images().values())
 
     def __get_sample_data_paths(self):
         # Return list of paths in sample data
         paths = []
         sample_paths = self.samples.get_paths()
         # Check if the path exists
-        for input_type, sample_paths in sample_paths.iteritems():
+        for input_type, sample_paths in sample_paths.items():
             if isinstance(sample_paths, list):
                 for path in sample_paths:
                     paths.append(path)
@@ -148,7 +148,7 @@ class InputWorker(PoolWorker):
                 #input_name = "Docker image %s" % input_obj.get_image_name()
                 self.validate_docker_image(input_obj)
 
-        except BaseException, e:
+        except BaseException as e:
             # Raise error because a command failed for a reason other than a file not existing
             input_obj.flag("validation_failed")
             logging.error("Unable to validate %s!" % input_desc)

@@ -4,9 +4,7 @@ import os
 
 from System.Datastore import GAPFile
 
-class Module(object):
-    __metaclass__ = abc.ABCMeta
-
+class Module(object, metaclass=abc.ABCMeta):
     def __init__(self, module_id, is_docker=False, is_resumable=False):
 
         # Initialize the module ID, defined in the config
@@ -28,7 +26,7 @@ class Module(object):
         self.output = {}
 
         # Initialize the lists of the input and output keys
-        self.input_keys = self.arguments.keys()
+        self.input_keys = list(self.arguments.keys())
         self.output_keys = None
 
         # Module output file directory
@@ -95,7 +93,7 @@ class Module(object):
 
         # Check that all required inputs are set
         err = False
-        for arg_type, arg in self.arguments.iteritems():
+        for arg_type, arg in self.arguments.items():
 
             # Set argument to default value if it hasn't been set
             if not arg.is_set():
@@ -209,11 +207,11 @@ class Module(object):
 
     def get_input_values(self):
         # Get list of current input values
-        return [arg.get_value() for arg in self.arguments.values()]
+        return [arg.get_value() for arg in list(self.arguments.values())]
 
     def get_output_values(self):
         # Get list of current output values
-        return self.output.values()
+        return list(self.output.values())
 
 
 class Argument(object):

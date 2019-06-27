@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 import sys
 import os
@@ -87,7 +87,7 @@ def configure_argparser(argparser_obj):
                                     "platform where pipeline will execute.")
 
     # Name of the platform module
-    available_plats = "\n".join(["%s (as module '%s')" % item for item in available_plat_modules.iteritems()])
+    available_plats = "\n".join(["%s (as module '%s')" % item for item in available_plat_modules.items()])
     argparser_obj.add_argument("--plat_name",
                                action='store',
                                type=platform_type,
@@ -180,6 +180,10 @@ def get_git_version():
     proc = sp.Popen(cmd, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
     out, err = proc.communicate()
 
+    # Convert to string formats
+    out = out.decode("utf8")
+    err = err.decode("utf8")
+
     # Throw error if anything happened
     if len(err) != 0:
         logging.error("Unable to determine git commit! Received error:\n{0}".format(err))
@@ -239,8 +243,8 @@ def main():
 
     except BaseException as e:
         logging.error("Pipeline failed!")
-        logging.error("Pipeline failure error:\n%s" % e.message)
-        err_msg = e.message
+        logging.error("Pipeline failure error:\n%s" % e)
+        err_msg = str(e)
         pipeline.save_progress()
         raise
 

@@ -35,10 +35,10 @@ class VCFMerger(Merger):
         # Generating JVM options
         if not self.is_docker:
             java = self.get_argument("java")
-            jvm_options = "-Xmx%dG -Djava.io.tmpdir=/tmp/" % (mem * 9 / 10)
+            jvm_options = "-Xmx%dG -Djava.io.tmpdir=/tmp/" % (mem * 9 // 10)
         else:
             java = "java"
-            jvm_options = "-Xmx%dG" % (mem * 9 / 10)
+            jvm_options = "-Xmx%dG" % (mem * 9 // 10)
 
         # Generating SnpSift command
         return "{0} {1} -jar {2} sort {3} > {4} !LOG2!".format(java, jvm_options, snpsift, " ".join(vcf_list), vcf_out)

@@ -55,7 +55,7 @@ class _QCReport:
         return values
 
     def get_sample_names(self):
-        return self.report.keys()
+        return list(self.report.keys())
 
     def get_colnames(self, sample=None):
         if sample is None:
@@ -83,7 +83,7 @@ class _QCReport:
 
     def validate(self):
         # Determine whether QCReport is valid
-        for sample_name, sample_data in self.report.iteritems():
+        for sample_name, sample_data in self.report.items():
             # Make sure every data point in every sample row contains only the required fields
             for sample_column in sample_data:
                 if not "".join(sorted(sample_column.keys())) == "ModuleNameNoteSourceValue":
@@ -167,10 +167,10 @@ class GetNumReadsFastQC(_QCReportReader):
                                                data_type="Total_Reads",
                                                note_type=filter_by_note)
         # Raise any errors
-        except BaseException, e:
+        except BaseException as e:
             logging.error("GetNumReads unable to get number of reads from QCReport!")
-            if e.message != "":
-                logging.error("Receive the following err msg:\n%s" % e.message)
+            if str(e) != "":
+                logging.error("Receive the following err msg:\n%s" % e)
             raise
 
         # Get length of errors
@@ -207,10 +207,10 @@ class GetNumReadsTrimmomatic(_QCReportReader):
                                                data_type="Trimmed_Reads")
 
         # Raise any errors
-        except BaseException, e:
+        except BaseException as e:
             logging.error("GetNumReads unable to get number of reads from QCReport!")
-            if e.message != "":
-                logging.error("Receive the following err msg:\n%s" % e.message)
+            if str(e) != "":
+                logging.error("Receive the following err msg:\n%s" % e)
             raise
 
         # Get length of errors

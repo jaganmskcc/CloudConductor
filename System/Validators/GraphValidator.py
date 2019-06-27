@@ -1,6 +1,6 @@
 import logging
 
-from Validator import Validator
+from .Validator import Validator
 
 class GraphValidator(Validator):
 
@@ -20,7 +20,7 @@ class GraphValidator(Validator):
         returns_input = False
 
         # Perform checking for each task in the graph
-        for task in self.graph.get_tasks().itervalues():
+        for task in self.graph.get_tasks().values():
 
             # Check to see if any input is returned
             returns_input = returns_input or len(task.get_final_output_keys()) > 0
@@ -73,7 +73,7 @@ class GraphValidator(Validator):
         task_args = task.module.get_arguments()
 
         # Check if each config key
-        for config_arg, config_value in config_input.iteritems():
+        for config_arg, config_value in config_input.items():
 
             # Check if key is an input key
             if config_arg not in task_args:
@@ -90,14 +90,14 @@ class GraphValidator(Validator):
                 # Get ids of all resources that match the module argument type
                 possible_resources = []
                 if self.resources.has_resource_type(config_arg):
-                    possible_resources = self.resources.get_resources(resource_type=config_arg).keys()
+                    possible_resources = list(self.resources.get_resources(resource_type=config_arg).keys())
 
                 # Add any resources declared on the docker image
                 docker_image_id = task.get_docker_image_id()
                 if docker_image_id is not None:
                     docker_image = self.resources.get_docker_images(docker_image_id)
                     if docker_image.has_resource_type(config_arg):
-                        possible_resources.extend(docker_image.get_resources(resource_type=config_arg).keys())
+                        possible_resources.extend(list(docker_image.get_resources(resource_type=config_arg).keys()))
 
                 # Throw error if no resources match module argument type
                 if len(possible_resources) < 1:
@@ -141,7 +141,7 @@ class GraphValidator(Validator):
         args = task.module.get_arguments()
 
         # Check if each argument can be found in any of the sources
-        for arg_key, arg_obj in args.iteritems():
+        for arg_key, arg_obj in args.items():
 
             # Priority of checking for argument
             if arg_obj.is_resource():

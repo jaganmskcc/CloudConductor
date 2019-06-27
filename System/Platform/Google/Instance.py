@@ -5,8 +5,7 @@ import math
 import random
 import getpass
 
-from System.Platform import Process
-from System.Platform import Processor
+from System.Platform import Process, Processor
 from System.Platform.Google import GoogleCloudHelper, GoogleResourceNotFound
 
 class Instance(Processor):
@@ -210,6 +209,10 @@ class Instance(Processor):
         # Wait for process to finish
         out, err = proc_obj.communicate()
 
+        # Convert to string formats
+        out = out.decode("utf8")
+        err = err.decode("utf8")
+
         # Set process to complete
         proc_obj.set_complete()
 
@@ -409,6 +412,10 @@ class Instance(Processor):
         proc = sp.Popen(cmd, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
         out, err = proc.communicate()
 
+        # Convert to string formats
+        out = out.decode("utf8")
+        err = err.decode("utf8")
+
         # If any error occured, then the ssh is not ready
         if err:
             return False
@@ -476,7 +483,7 @@ class Instance(Processor):
             args.append("pd-standard")
 
         # Add local ssds if necessary
-        args.extend(["--local-ssd interface=scsi" for _ in xrange(self.nr_local_ssd)])
+        args.extend(["--local-ssd interface=scsi" for _ in range(self.nr_local_ssd)])
 
         # Specify google cloud access scopes
         args.append("--scopes")

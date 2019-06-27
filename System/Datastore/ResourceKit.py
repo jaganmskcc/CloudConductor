@@ -1,10 +1,7 @@
-import os
-import logging
-
 from Config import ConfigParser
-from GAPFile import GAPFile
+from System.Datastore import GAPFile
 
-class ResourceKit (object):
+class ResourceKit(object):
     # Container class that parses and holds resource objects declared in an external config file
     def __init__(self, resource_config_file):
 
@@ -24,7 +21,7 @@ class ResourceKit (object):
         # Parse resources listed in configs and convert to config objects
         # Return dictionary of resource objects indexed by resource name
         resources = {}
-        for resource_id, resource_data in self.config["Path"].iteritems():
+        for resource_id, resource_data in self.config["Path"].items():
             path          = resource_data.pop("path")
             resource_type = resource_data.pop("resource_type")
             resources[resource_id] = GAPFile(resource_id, resource_type, path, **resource_data)
@@ -34,14 +31,14 @@ class ResourceKit (object):
         # Parse docker images listed and creates
         # Return dictionary of resource objects indexed by resource name
         dockers = {}
-        for docker_id, docker_data in self.config["Docker"].iteritems():
+        for docker_id, docker_data in self.config["Docker"].items():
             dockers[docker_id] = DockerImage(docker_id, docker_data)
         return dockers
 
     def __organize_by_type(self):
         # Returns resource dictionary organized by resource type instead of resource name
         resources = {}
-        for resource_id, resource in self.resources.iteritems():
+        for resource_id, resource in self.resources.items():
             resource_type = resource.get_type()
             if resource_type not in resources:
                 resources[resource_type] = {}
@@ -69,7 +66,7 @@ class ResourceKit (object):
             return self.dockers[image_id]
 
 
-class DockerImage:
+class DockerImage(object):
     # Class for holding information about Dockers and the files they contain
     def __init__(self, docker_id, config):
         self.docker_id  = docker_id
@@ -84,7 +81,7 @@ class DockerImage:
         # Parse resources available to docker image
         # Return dictionary of resource objects indexed by resource name
         resources = {}
-        for resource_id, resource_data in self.config.iteritems():
+        for resource_id, resource_data in self.config.items():
             path          = resource_data.pop("path")
             resource_type = resource_data.pop("resource_type")
             resources[resource_id] = GAPFile(resource_id, resource_type, path, **resource_data)
@@ -94,7 +91,7 @@ class DockerImage:
     def __organize_by_type(self):
         # Returns resource dictionary organized by resource type instead of resource name
         resources = {}
-        for resource_id, resource in self.resources.iteritems():
+        for resource_id, resource in self.resources.items():
             resource_type = resource.get_type()
             if resource_type not in resources:
                 resources[resource_type] = {}

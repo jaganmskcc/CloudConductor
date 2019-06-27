@@ -1,7 +1,7 @@
 import logging
 import time
 
-from TaskWorker import TaskWorker
+from System.Graph import TaskWorker
 
 class Scheduler(object):
 
@@ -91,7 +91,7 @@ class Scheduler(object):
         while not done:
             # Wait for all task workers to finish up cancelling
             done = True
-            for task_id, task_worker in self.task_workers.iteritems():
+            for task_id, task_worker in self.task_workers.items():
                 if not task_worker.get_status() is TaskWorker.FINALIZED:
                     # Indicate that not all tasks have been finalized
                     done = False
@@ -101,12 +101,12 @@ class Scheduler(object):
                     try:
                         self.__finalize_task_worker(task_worker)
 
-                    except BaseException, e:
+                    except BaseException as e:
                         # Log error but don't raise exception as we want to finish finalizing all task workers
                         if not task_worker.is_cancelled():
                             logging.error("Task '%s' failed due to runtime error!" % task_id)
-                            if e.message != "":
-                                logging.error("Received the following message:\n%s" % e.message)
+                            if str(e) != "":
+                                logging.error("Received the following message:\n%s" % e)
 
             # Wait for a bit before checking again
             time.sleep(5)
@@ -114,7 +114,7 @@ class Scheduler(object):
     def __cancel_unfinished_tasks(self):
         # Cancel any still-running jobs
         # Start destroying processors for still-running jobs
-        for task_id, task_worker in self.task_workers.iteritems():
+        for task_id, task_worker in self.task_workers.items():
             if not task_worker.get_status() in [TaskWorker.COMPLETE, TaskWorker.FINALIZING, TaskWorker.FINALIZED]:
                 # Cancel pipeline if it isn't finalizing or already cancelled
                 logging.debug("Initiated cancellation of '%s'" % task_id)

@@ -1,4 +1,4 @@
-from Module import Module
+from Modules import Module
 
 class Merger(Module):
 

@@ -3,10 +3,8 @@ import logging
 import subprocess as sp
 import tempfile
 
-from System.Platform import Platform, Processor
-from Instance import Instance
-from PreemptibleInstance import PreemptibleInstance
-from GoogleCloudHelper import GoogleCloudHelper
+from System.Platform import Platform
+from System.Platform.Google import Instance, PreemptibleInstance, GoogleCloudHelper
 
 class GooglePlatform(Platform):
 
@@ -105,7 +103,7 @@ class GooglePlatform(Platform):
 
         # Generate report file for transfer
         with tempfile.NamedTemporaryFile(delete=False) as report_file:
-            report_file.write(str(report))
+            report_file.write(str(report).encode("utf8"))
             report_filepath = report_file.name
 
         # Generate destination file path
@@ -137,7 +135,7 @@ class GooglePlatform(Platform):
             logging.warning("(%s) Could not remove dummy input files on google cloud!")
 
         # Initiate destroy process on all the instances that haven't been destroyed
-        for instance_name, instance_obj in self.processors.iteritems():
+        for instance_name, instance_obj in self.processors.items():
             try:
                 if instance_name not in self.dealloc_procs:
                     instance_obj.destroy(wait=False)
@@ -145,7 +143,7 @@ class GooglePlatform(Platform):
                 logging.warning("(%s) Could not destroy instance!" % instance_name)
 
         # Now wait for all destroy processes to finish
-        for instance_name, instance_obj in self.processors.iteritems():
+        for instance_name, instance_obj in self.processors.items():
             try:
                 #if instance_obj.get_status() != Processor.OFF:
                 if instance_name not in self.dealloc_procs:
@@ -161,7 +159,7 @@ class GooglePlatform(Platform):
         # Returns complete config for a task processor
         params = {}
         inst_params = self.config["task_processor"]
-        for param, value in inst_params.iteritems():
+        for param, value in inst_params.items():
             params[param] = value
 
         # Add platform-specific options

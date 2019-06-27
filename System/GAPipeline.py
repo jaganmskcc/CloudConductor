@@ -1,18 +1,12 @@
 import logging
 import importlib
 import json
-import time
 from collections import OrderedDict
 
-from System.Graph import Graph
-from System.Datastore import ResourceKit
-from System.Datastore import SampleSet
-from System.Validators import GraphValidator
-from System.Validators import InputValidator
-from System.Validators import SampleValidator
+from System.Graph import Graph, Scheduler
+from System.Datastore import ResourceKit, SampleSet, Datastore
+from System.Validators import GraphValidator, InputValidator, SampleValidator
 from System.Platform import StorageHelper, DockerHelper
-from System.Datastore import Datastore
-from System.Graph import Scheduler
 
 class GAPipeline(object):
 
@@ -120,7 +114,7 @@ class GAPipeline(object):
 
         # Validate that pipeline workspace can be created
         workspace = self.datastore.get_task_workspace()
-        for dir_type, dir_path in workspace.get_workspace().iteritems():
+        for dir_type, dir_path in workspace.get_workspace().items():
             self.storage_helper.mkdir(dir_path=str(dir_path), job_name="mkdir_%s" % dir_type, wait=True)
         logging.info("CloudCounductor run validated! Beginning pipeline execution.")
 
@@ -133,10 +127,10 @@ class GAPipeline(object):
             workspace = self.datastore.get_task_workspace()
             try:
                 self.storage_helper.rm(path=workspace.get_tmp_output_dir(), job_name="rm_tmp_output", wait=True)
-            except BaseException, e:
+            except BaseException as e:
                 logging.error("Unable to remove tmp output directory: %s" % workspace.get_tmp_output_dir())
-                if e.message != "":
-                    logging.error("Received the following err message:\n%s" % e.message)
+                if str(e) != "":
+                    logging.error("Received the following err message:\n%s" % e)
 
     def save_progress(self):
         pass
@@ -147,10 +141,10 @@ class GAPipeline(object):
             report = self.__make_pipeline_report(err, err_msg, git_version)
             if self.platform is not None:
                 self.platform.publish_report(report)
-        except BaseException, e:
+        except BaseException as e:
             logging.error("Unable to publish report!")
-            if e.message != "":
-                logging.error("Received the following message:\n%s" % e.message)
+            if str(e) != "":
+                logging.error("Received the following message:\n%s" % e)
             raise
 
     def clean_up(self):
@@ -159,10 +153,10 @@ class GAPipeline(object):
             try:
                 logging.debug("Destroying helper processor...")
                 self.helper_processor.destroy(wait=False)
-            except BaseException, e:
+            except BaseException as e:
                 logging.error("Unable to destroy helper processor '%s'!" % self.helper_processor.get_name())
-                if e.message != "":
-                    logging.error("Received the follwoing err message:\n%s" % e.message)
+                if str(e) != "":
+                    logging.error("Received the follwoing err message:\n%s" % e)
 
         # Cleaning up the platform (let the platform decide what that means)
         if self.platform is not None:
@@ -185,7 +179,7 @@ class GAPipeline(object):
         # Register runtime data for pipeline tasks
         if self.scheduler is not None:
             task_workers = self.scheduler.get_task_workers()
-            for task_name, task_worker in task_workers.iteritems():
+            for task_name, task_worker in task_workers.items():
 
                 # Register data about task runtime
                 task        = task_worker.get_task()
@@ -217,7 +211,7 @@ class GAPipeline(object):
         return report
 
 
-class GAPReport:
+class GAPReport(object):
     # Object for holding metadata related to a GAP pipeline run
     def __init__(self, pipeline_id, err=False, err_msg=None, git_version=None):
 
@@ -296,7 +290,7 @@ class GAPReport:
         }
         logging.debug("Task report(%s). Start: %s, Runtime: %s, Cost: %s" % (task_name, start_time, run_time, cost))
         if task_data is not None:
-            for key, val in task_data.iteritems():
+            for key, val in task_data.items():
                 if key not in proc_data:
                     proc_data[key] = val
         self.tasks.append(proc_data)

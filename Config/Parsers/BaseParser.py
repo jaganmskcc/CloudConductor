@@ -3,10 +3,7 @@ import sys
 import logging
 import abc
 
-class BaseParser(object):
-    __metaclass__ = abc.ABCMeta
-
-    # Base class for parsing information from a config file and validating it against a specification file
+class BaseParser(object, metaclass=abc.ABCMeta):
     def __init__(self, config_file, config_spec_file):
 
         # Obtain the path to config file (part of the current directory)

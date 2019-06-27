@@ -1,7 +1,7 @@
 import logging
 import os
 
-from System.Platform import StorageHelper, DockerHelper, Processor, Platform
+from System.Platform import StorageHelper, DockerHelper, Platform
 
 class ModuleExecutor(object):
 
@@ -188,7 +188,7 @@ class ModuleExecutor(object):
         # Create all directories specified in task workspace
 
         logging.info("(%s) Creating workspace for task '%s'..." % (self.processor.name, self.task_id))
-        for dir_type, dir_obj in  self.workspace.get_workspace().iteritems():
+        for dir_type, dir_obj in  self.workspace.get_workspace().items():
             self.storage_helper.mkdir(dir_obj, job_name="mkdir_%s" % dir_type, wait=True)
 
         # Set processor wrk, log directories

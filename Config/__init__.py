@@ -1,1 +1,1 @@
-from ConfigParser import ConfigParser
+from .ConfigParser import ConfigParser

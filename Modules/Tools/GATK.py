@@ -31,7 +31,7 @@ class _GATKBase(Module):
         gatk    = self.get_argument("gatk")
         mem     = self.get_argument("mem")
         java = self.get_argument("java")
-        jvm_options = "-Xmx{0}G -Djava.io.tmpdir={1}".format(mem * 4 / 5, "/tmp/")
+        jvm_options = "-Xmx{0}G -Djava.io.tmpdir={1}".format(mem * 4 // 5, "/tmp/")
 
         # Determine numeric version of GATK
         gatk_version = self.get_argument("gatk_version")
@@ -110,7 +110,7 @@ class HaplotypeCaller(_GATKBase):
         bed                    = self.get_argument("bed")
 
         gatk_cmd               = self.get_gatk_command()
-        gatk_version           = self.get_argument("gatk_version")
+        gatk_version           = int(self.get_argument("gatk_version"))
         use_bqsr               = self.get_argument("use_bqsr")
         use_soft_clipped_bases = self.get_argument("use_soft_clipped_bases")
         nr_cpus                = self.get_argument("nr_cpus")
@@ -386,7 +386,7 @@ class IndexVCF(_GATKBase):
 
         # Generate command with java if not running on docker
         java = self.get_argument("java")
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 // 5, "/tmp/")
         cmd = "%s %s -cp %s org.broadinstitute.gatk.tools.CatVariants" % (java, jvm_options, gatk)
 
         # Generating the CatVariants options
@@ -721,7 +721,7 @@ class Mutect2(_GATKBase):
             # If we have not stopped, just added it (possibly again) in the dictionary
             tumor_status[_id] = _tumor
 
-        return tumor_status.keys(), tumor_status.values()
+        return list(tumor_status.keys()), list(tumor_status.values())
 
 class DepthOfCoverage(_GATKBase):
 

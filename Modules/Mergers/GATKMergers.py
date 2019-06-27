@@ -27,7 +27,7 @@ class _GATKBase(Merger):
         gatk        = self.get_argument("gatk")
         mem         = self.get_argument("mem")
         java        = self.get_argument("java")
-        jvm_options = "-Xmx{0}G -Djava.io.tmpdir={1}".format(mem * 4/5, "/tmp/")
+        jvm_options = "-Xmx{0}G -Djava.io.tmpdir={1}".format(mem * 4//5, "/tmp/")
 
         # Determine numeric version of GATK
         gatk_version = self.get_argument("gatk_version")
@@ -196,7 +196,7 @@ class CatVariants(_GATKBase):
         gvcf_out    = self.get_output("gvcf")
 
         # Generating JVM options
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=/tmp/" % (mem * 9 / 10)
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=/tmp/" % (mem * 9 // 10)
 
         # Generating the CatVariants options
         opts = list()
@@ -323,7 +323,7 @@ class GenomicsDBImport(PseudoMerger):
         genomicsDB      = self.get_output("genomicsDB")
 
         # Make JVM options and GATK command
-        jvm_options = "-Xmx{0}G -Xms{0}G -Djava.io.tmpdir={1}".format(mem * 3 / 5, "/tmp/")
+        jvm_options = "-Xmx{0}G -Xms{0}G -Djava.io.tmpdir={1}".format(mem * 3 // 5, "/tmp/")
         gatk_cmd    = "{0} {1} -jar {2}".format(java, jvm_options, gatk)
 
         # Generating the combine options

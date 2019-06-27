@@ -1,5 +1,5 @@
 import threading
-from Queue import Queue
+from queue import Queue
 import logging
 
 # Inspired by https://www.metachris.com/2016/04/python-threadpool/
@@ -20,8 +20,8 @@ class PoolWorker(threading.Thread):
                 args, kargs = self.task_queue.get()
             except Exception as e:
                 logging.error("%s failed! Could not obtain task arguments from the task queue!" % self.__class__.__name__)
-                if e.message != "":
-                    logging.error("Received the following error message:\n%s" % e.message)
+                if str(e) != "":
+                    logging.error("Received the following error message:\n%s" % e)
                 return
 
             # Initialize the number or retries
@@ -46,8 +46,8 @@ class PoolWorker(threading.Thread):
 
                     # Raise abstract function for handling thread
                     logging.error("%s failed!" % self.__class__.__name__)
-                    if e.message != "":
-                        logging.error("Received the following error message:\n%s" % e.message)
+                    if str(e) != "":
+                        logging.error("Received the following error message:\n%s" % e)
 
                     # Let user know if we will retry
                     if num_retries < 3:
