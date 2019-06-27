@@ -1,5 +1,6 @@
 import os.path
 from Modules import Module
+import logging
 
 
 class DiscordantReadsPileup(Module):
@@ -33,6 +34,15 @@ class DiscordantReadsPileup(Module):
 
         # generate the output file
         output_dir = self.get_output_dir()
+
+        # We may get more than one sample name if this is being run on a merged BAM. Check that it's all the same sample
+        # name, and raise an error if that's not the case.
+        if isinstance(sample_name, list):
+            sample_name = set(sample_name)
+            if len(sample_name) != 1:
+                logging.error("More than one unique sample provided. Please only run one sample at a time.")
+            sample_name = list(sample_name)[0]
+
         output_prefix = os.path.join(output_dir, sample_name)
         
         # Declare vanilla translocations and annotated output file names
