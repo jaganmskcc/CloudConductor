@@ -707,6 +707,10 @@ class Mutect2(_GATKBase):
         sample_names = self.get_argument("sample_name")
         is_tumor = self.get_argument("is_tumor")
 
+        # Make sure samples and tumor status are lists
+        sample_names = sample_names if isinstance(sample_names, list) else [sample_names]
+        is_tumor = is_tumor if isintance(is_tumor, list) else [is_tumor]
+
         # Add each sample to the tumor status dictionary
         for _name, _tumor in zip(sample_names, is_tumor):
 
@@ -715,8 +719,8 @@ class Mutect2(_GATKBase):
 
             # Check if the current sample id has already been introduced but with a different tumor status
             if _id in tumor_status and tumor_status[_id] != _tumor:
-                logging.error("Same sample ID '%s' was provided as different tumor statuses!" % _id)
-                raise RuntimeError("Same sample ID '%s' was provided as different tumor statuses!" % _id)
+                logging.error("Same sample ID '%s' was provided as different tumor status!" % _id)
+                raise RuntimeError("Same sample ID '%s' was provided as different tumor status!" % _id)
 
             # If we have not stopped, just added it (possibly again) in the dictionary
             tumor_status[_id] = _tumor
