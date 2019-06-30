@@ -709,7 +709,7 @@ class Mutect2(_GATKBase):
 
         # Make sure samples and tumor status are lists
         sample_names = sample_names if isinstance(sample_names, list) else [sample_names]
-        is_tumor = is_tumor if isintance(is_tumor, list) else [is_tumor]
+        is_tumor = is_tumor if isinstance(is_tumor, list) else [is_tumor]
 
         # Add each sample to the tumor status dictionary
         for _name, _tumor in zip(sample_names, is_tumor):
