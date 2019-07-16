@@ -21,7 +21,7 @@ class DiscordantReadsPileup(Module):
         self.add_argument("filter_bed",                 is_required=False, is_resource=True, default_value=-1)
         self.add_argument("gene_bed",                   is_required=False, is_resource=True)
         self.add_argument("promoter_bed",               is_required=False, is_resource=True)
-        self.add_argument("target_bed",                 is_required=False, is_resource=True)
+        self.add_argument("bed",                        is_required=False, is_resource=True)
         self.add_argument("literature_bed",             is_required=False, is_resource=True)
 
         self.add_argument("nr_cpus",                    is_required=True, default_value=2)
@@ -60,7 +60,7 @@ class DiscordantReadsPileup(Module):
         filter_bed              = self.get_argument("filter_bed")
         gene_bed                = self.get_argument("gene_bed")
         promoter_bed            = self.get_argument("promoter_bed")
-        target_bed              = self.get_argument("target_bed")
+        target_bed              = self.get_argument("bed")
         literature_bed          = self.get_argument("literature_bed")
 
         # Get output path
