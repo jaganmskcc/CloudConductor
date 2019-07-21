@@ -34,7 +34,7 @@ class ModuleExecutor(object):
         src_seen = []
         dest_seen = []
         count = 1
-        batch_size = 30
+        batch_size = 5
         loading_counter = 0
         for task_input in inputs:
 
