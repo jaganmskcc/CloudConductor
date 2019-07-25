@@ -165,7 +165,7 @@ class Task(object):
 
             # Get list of available submodules
             available_modules = []
-            for mod_name, mod in _module.__dict__.iteritems():
+            for mod_name, mod in _module.__dict__.items():
                 # Exclude any builtin types (start with _ or __),
                 # Exclude imported modules that aren't classes (e.g. 'os' or 'logging')
                 # Exclude anything that isn't a class (__class__.__name__ is None, e.g. __doc__, __package__)

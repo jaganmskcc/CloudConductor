@@ -2,7 +2,7 @@ import copy
 import os
 import logging
 
-from GAPFile import GAPFile
+from System.Datastore import GAPFile
 from System.Platform import Platform
 
 class PrematureTaskInputSetError(Exception):
@@ -30,7 +30,7 @@ class Datastore(object):
             raise PrematureTaskInputSetError("Cannot set task arguments before a task dependencies have completed!")
 
         task_module = self.graph.get_tasks(task_id).module
-        for input_type, input_arg in task_module.get_arguments().iteritems():
+        for input_type, input_arg in task_module.get_arguments().items():
             logging.debug("(%s) Setting arg: %s" % (task_id, input_type))
             val = self.__get_task_arg(task_id, input_type, is_resource=input_arg.is_resource())
             if val is None:
@@ -240,7 +240,7 @@ class Datastore(object):
             else:
                 # Only return the resource of type "arg_key" if it is one value
                 if len(self.resource_kit.get_resources(arg_type)) == 1:
-                    args = [self.resource_kit.get_resources(arg_type).values()[0]]
+                    args = [list(self.resource_kit.get_resources(arg_type).values())[0]]
 
         return args
 
@@ -265,7 +265,7 @@ class Datastore(object):
 
                 # If not in config input, should only be one resource of type "arg_key" in docker
                 else:
-                    args = [docker_image.get_resources(arg_type).values()[0]]
+                    args = [list(docker_image.get_resources(arg_type).values())[0]]
 
         return args
 
@@ -274,7 +274,7 @@ class Datastore(object):
         max_cpus = self.platform.get_max_nr_cpus()
 
         # CPUs = 'max' converted to platform maximum cpus
-        if isinstance(nr_cpus, basestring) and nr_cpus.lower() == "max":
+        if isinstance(nr_cpus, str) and nr_cpus.lower() == "max":
             # Set special case for maximum nr_cpus
             nr_cpus = max_cpus
 
@@ -287,7 +287,7 @@ class Datastore(object):
 
     def __reformat_mem(self, mem, nr_cpus):
         max_mem = self.platform.get_max_mem()
-        if isinstance(mem, basestring):
+        if isinstance(mem, str):
             # Special case where mem is platform max
             if mem.lower() == "max":
                 mem = max_mem
@@ -318,7 +318,7 @@ class TaskWorkspace(object):
         self.workspace["final_log"] = os.path.join(final_output_dir, "log/")
 
         # Standardize directory paths
-        for dir_type, dir_path in self.workspace.iteritems():
+        for dir_type, dir_path in self.workspace.items():
             dir_path = Platform.standardize_dir(dir_path)
             self.workspace[dir_type] = dir_path
 

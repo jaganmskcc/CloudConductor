@@ -30,9 +30,9 @@ class DockerHelper(object):
             self.pull(image_name, job_name, log=False, quiet_failure=False, **kwargs)
             self.proc.wait_process(job_name)
             return True
-        except RuntimeError, e:
-            if e.message != "":
-                logging.debug("DockerHelper error for %s:\n%s" % (job_name, e.message))
+        except RuntimeError as e:
+            if str(e) != "":
+                logging.debug("DockerHelper error for %s:\n%s" % (job_name, e))
             return False
         except:
             logging.error("Unable to check docker image existence: %s" % image_name)
@@ -55,8 +55,8 @@ class DockerHelper(object):
             # Add them up and divide by billion bytes
             return sum(bytes)/(1024**3.0)
 
-        except BaseException, e:
+        except BaseException as e:
             logging.error("Unable to check docker image size: %s" % image_name)
-            if e.message != "":
-                logging.error("Received the following msg:\n%s" % e.message)
+            if str(e) != "":
+                logging.error("Received the following msg:\n%s" % e)
             raise

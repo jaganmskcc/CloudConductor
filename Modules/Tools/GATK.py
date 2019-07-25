@@ -31,7 +31,7 @@ class _GATKBase(Module):
         gatk    = self.get_argument("gatk")
         mem     = self.get_argument("mem")
         java = self.get_argument("java")
-        jvm_options = "-Xmx{0}G -Djava.io.tmpdir={1}".format(mem * 4 / 5, "/tmp/")
+        jvm_options = "-Xmx{0}G -Djava.io.tmpdir={1}".format(mem * 4 // 5, "/tmp/")
 
         # Determine numeric version of GATK
         gatk_version = self.get_argument("gatk_version")
@@ -110,7 +110,7 @@ class HaplotypeCaller(_GATKBase):
         bed                    = self.get_argument("bed")
 
         gatk_cmd               = self.get_gatk_command()
-        gatk_version           = self.get_argument("gatk_version")
+        gatk_version           = int(self.get_argument("gatk_version"))
         use_bqsr               = self.get_argument("use_bqsr")
         use_soft_clipped_bases = self.get_argument("use_soft_clipped_bases")
         nr_cpus                = self.get_argument("nr_cpus")
@@ -386,7 +386,7 @@ class IndexVCF(_GATKBase):
 
         # Generate command with java if not running on docker
         java = self.get_argument("java")
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 // 5, "/tmp/")
         cmd = "%s %s -cp %s org.broadinstitute.gatk.tools.CatVariants" % (java, jvm_options, gatk)
 
         # Generating the CatVariants options
@@ -707,6 +707,10 @@ class Mutect2(_GATKBase):
         sample_names = self.get_argument("sample_name")
         is_tumor = self.get_argument("is_tumor")
 
+        # Make sure samples and tumor status are lists
+        sample_names = sample_names if isinstance(sample_names, list) else [sample_names]
+        is_tumor = is_tumor if isinstance(is_tumor, list) else [is_tumor]
+
         # Add each sample to the tumor status dictionary
         for _name, _tumor in zip(sample_names, is_tumor):
 
@@ -715,13 +719,13 @@ class Mutect2(_GATKBase):
 
             # Check if the current sample id has already been introduced but with a different tumor status
             if _id in tumor_status and tumor_status[_id] != _tumor:
-                logging.error("Same sample ID '%s' was provided as different tumor statuses!" % _id)
-                raise RuntimeError("Same sample ID '%s' was provided as different tumor statuses!" % _id)
+                logging.error("Same sample ID '%s' was provided as different tumor status!" % _id)
+                raise RuntimeError("Same sample ID '%s' was provided as different tumor status!" % _id)
 
             # If we have not stopped, just added it (possibly again) in the dictionary
             tumor_status[_id] = _tumor
 
-        return tumor_status.keys(), tumor_status.values()
+        return list(tumor_status.keys()), list(tumor_status.values())
 
 class DepthOfCoverage(_GATKBase):
 

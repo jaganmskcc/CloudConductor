@@ -8,10 +8,7 @@ import threading
 
 from System.Platform import Process
 
-class Processor(object):
-    __metaclass__ = abc.ABCMeta
-
-    # Instance status values available between threads
+class Processor(object, metaclass=abc.ABCMeta):
     OFF         = 0  # Destroyed or not allocated on the cloud
     CREATING    = 1  # Instance is being created
     DESTROYING  = 2  # Instance is destroyed
@@ -124,7 +121,7 @@ class Processor(object):
 
     def wait(self):
         # Returns when all currently running processes have completed
-        for proc_name, proc_obj in self.processes.iteritems():
+        for proc_name, proc_obj in self.processes.items():
             self.wait_process(proc_name)
 
     def lock(self):

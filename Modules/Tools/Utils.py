@@ -71,8 +71,8 @@ class ConcatFastq(Module):
         error = False
         multi_r1    = isinstance(r1, list)
         multi_r2    = isinstance(r2, list)
-        single_r1   = isinstance(r1, GAPFile) or isinstance(r1, basestring)
-        single_r2   = isinstance(r2, GAPFile) or isinstance(r2, basestring)
+        single_r1   = isinstance(r1, GAPFile) or isinstance(r1, str)
+        single_r2   = isinstance(r2, GAPFile) or isinstance(r2, str)
         if multi_r1:
             if multi_r2 and len(r1) != len(r2):
                 # Multiple R1, R2 but not the same in each
@@ -128,7 +128,7 @@ class RecodeVCF(Module):
         # Optionally point to file specifying which vcf INFO fields to include in recoded output file
         if isinstance(info_columns, list):
             cmd += " --info-columns %s" % ",".join(info_columns)
-        elif isinstance(info_columns, basestring):
+        elif isinstance(info_columns, str):
             cmd += " --info-columns %s" % info_columns
 
         # Capture stderr

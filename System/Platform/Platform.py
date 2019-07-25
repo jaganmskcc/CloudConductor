@@ -14,9 +14,7 @@ class TaskPlatformLockError(Exception):
 class InvalidProcessorError(Exception):
     pass
 
-class Platform(object):
-    __metaclass__ = abc.ABCMeta
-
+class Platform(object, metaclass=abc.ABCMeta):
     CONFIG_SPEC = None
 
     def __init__(self, name, platform_config_file, final_output_dir):

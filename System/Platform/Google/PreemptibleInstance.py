@@ -1,12 +1,9 @@
 import logging
 import subprocess as sp
 import time
-from collections import OrderedDict
 
-from System.Platform import Process
-from System.Platform import Processor
-from Instance import Instance
-from System.Platform.Google import GoogleCloudHelper
+from System.Platform import Process, Processor
+from System.Platform.Google import Instance
 
 class PreemptibleInstance(Instance):
 
@@ -125,7 +122,7 @@ class PreemptibleInstance(Instance):
         if not self.is_preemptible or force_destroy:
 
             # Rerun all commands
-            for proc_name, proc_obj in self.processes.items():
+            for proc_name, proc_obj in list(self.processes.items()):
 
                 # Skip processes that do not need to be rerun
                 if proc_name in ["create", "destroy", "start", "stop"]:
@@ -153,7 +150,7 @@ class PreemptibleInstance(Instance):
         checkpoint_commands = [i[0] for i in self.checkpoints] # create array of just the commands
         logging.debug("CHECKPOINT COMMANDS: %s" % str(checkpoint_commands))
         cleanup_output = False
-        for proc_name, proc_obj in self.processes.items():
+        for proc_name, proc_obj in list(self.processes.items()):
 
             # Skip processes that do not need to be rerun
             if proc_name in ["create", "destroy", "start", "stop"]:
@@ -210,10 +207,10 @@ class PreemptibleInstance(Instance):
 
         # Log which commands will be rerun
         logging.debug("Commands to be rerun: (%s) " % str(
-            [proc_name for proc_name, proc_obj in self.processes.items() if proc_obj.needs_rerun()]))
+            [proc_name for proc_name, proc_obj in list(self.processes.items()) if proc_obj.needs_rerun()]))
 
         # Rerunning all the commands that need to be rerun
-        for proc_name, proc_obj in self.processes.items():
+        for proc_name, proc_obj in list(self.processes.items()):
             if proc_obj.needs_rerun():
                 self.run(job_name=proc_name,
                          cmd=proc_obj.get_command(),

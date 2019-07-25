@@ -102,7 +102,7 @@ class Trimmomatic (Module):
         # Generate base cmd for running locally
         if not self.is_docker:
             java = self.get_argument("java")
-            jvm_options = "-Xmx%dG -Djava.io.tmp=%s" % (mem * 4 / 5, "/tmp/")
+            jvm_options = "-Xmx%dG -Djava.io.tmp=%s" % (mem * 4 // 5, "/tmp/")
             basecmd = "%s %s -jar %s" % (java, jvm_options, trimmomatic)
 
         # Generate base cmd for running on docker

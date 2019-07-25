@@ -90,7 +90,7 @@ class FastqSplitter(Splitter):
 
         # Get output file prefix
         # Get output file basename
-        split_name = self.output.keys()[0]
+        split_name = list(self.output.keys())[0]
         output_basename = self.output[split_name]["R1"].get_path().split(split_name)[0]
 
         # Generate command for splitting R1

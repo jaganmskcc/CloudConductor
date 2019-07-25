@@ -51,13 +51,13 @@ class BamSplitter(Splitter):
         nr_cpus     = self.get_argument("nr_cpus")
 
         # Get names of chromosomes to split
-        chroms  = [self.output[split_name]["chroms"] for split_name in self.output.keys() if split_name not in ["remains", "unmapped"]]
+        chroms  = [self.output[split_name]["chroms"] for split_name in list(self.output.keys()) if split_name not in ["remains", "unmapped"]]
 
         # Get names of remaining chromosomes
         remains = self.output["remains"]["chroms"]
 
         # Get output file basename
-        split_name      = self.output.keys()[0]
+        split_name      = list(self.output.keys())[0]
         output_basename = self.output[split_name]["bam"].split(split_name)[0]
 
         # Generating the commands
