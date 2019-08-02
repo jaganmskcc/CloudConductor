@@ -34,3 +34,9 @@ class TestGraph(TestCase):
         for line in in_lines:
             sorted_line = sorted("".join(line.split()))
             self.assertIn(sorted_line, sorted_lines, "\n\n\"%s\" not found str(graph):\n%s" % (line, "\n".join(out_lines)))
+
+    def test_graph_with_cycle(self):
+        """Tests initializing a Graph object with cycle in the graph config."""
+        # When runtime is not set, initializing graph with cycle will raise IOError
+        with self.assertRaises(IOError):
+            g = Graph(self.cycle_config)
