@@ -79,3 +79,30 @@ class TestGraph(TestCase):
         for adj_list in g.adj_list.values():
             self.assertNotIn(remove_task_id, adj_list)
 
+    def test_get_parents_and_children(self):
+        g = Graph(self.graph_config)
+        # Parents
+        # Split_sample has no parent
+        self.assertEqual(g.get_parents("split_sample"), [])
+        # Node with one parent
+        parents = g.get_parents("collect_read_counts")
+        self.assertEqual(["split_sample"], parents)
+        # Node does not exist
+        with self.assertRaises(RuntimeError):
+            g.get_parents("ABC")
+
+        # Children
+        # Node with one child
+        children = g.get_children("collect_read_counts")
+        self.assertEqual(["denoise_read_counts"], children)
+        # Node with two children
+        children = g.get_children("denoise_read_counts")
+        self.assertEqual(len(children), 2)
+        self.assertIn("plot_denoise_cr", children)
+        self.assertIn("model_segments", children)
+        # Node with on child
+        children = g.get_children("plot_denoise_cr")
+        self.assertEqual(len(children), 0)
+        # Node does not exist
+        with self.assertRaises(RuntimeError):
+            g.get_children("ABC")
