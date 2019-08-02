@@ -1,0 +1,13 @@
+# Python for travis: see documentation at https://docs.travis-ci.com/user/languages/python
+
+language: python
+branches:
+  only:
+  - qiu_test
+cache: pip
+install:
+  - pip install -r requirements.txt
+  - pip install coverage python-coveralls
+script: coverage run --source=. -m unittest discover -s tests -p "test_*.py"
+after_success:
+  - coveralls
