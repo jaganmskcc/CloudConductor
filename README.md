@@ -1,7 +1,7 @@
 <div align=center><img src="docs/_static/cloud-conductor-logo-colored.png" alt="CC" width=450 height=225 align="middle"/></div>
 
 <!-- badges: start -->
-[![Travis build status](https://travis-ci.org/labdave/RNAUtils.svg?branch=master)](https://travis-ci.org/labdave/CloudConductor)
+[![Travis build status](https://travis-ci.org/labdave/CloudConductor.svg?branch=qiu_test)](https://travis-ci.org/labdave/CloudConductor)
 <!-- badges: end -->
 
 ## CloudConductor: Simplified Bioinformatics
