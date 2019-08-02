@@ -1,7 +1,7 @@
 import os
 from importlib.machinery import SourceFileLoader
 from unittest import TestCase
-from System.Graph import Graph
+from System.Graph import Graph, Task
 
 TESTS_DIR = os.path.dirname(__file__)
 
@@ -39,4 +39,43 @@ class TestGraph(TestCase):
         """Tests initializing a Graph object with cycle in the graph config."""
         # When runtime is not set, initializing graph with cycle will raise IOError
         with self.assertRaises(IOError):
-            g = Graph(self.cycle_config)
+            Graph(self.cycle_config)
+
+    def test_add_and_remove_task(self):
+        g = Graph(self.graph_config)
+        # Adding a duplicate task should raise a RuntimeError
+        task = Task("split_sample", **dict(
+            module="SampleSplitter",
+            submodule="SampleSplitter",
+            final_output=None,
+        ))
+        with self.assertRaises(RuntimeError):
+            g.add_task(task)
+
+        # TODO: Adding a new task does not check if input from is valid.
+
+        # Add a new task
+        task_id = "test_task"
+        task = Task(task_id, **dict(
+            module="SampleSplitter",
+            submodule="SampleSplitter",
+            final_output=None,
+            input_from=["plot_denoise_cr", "call_crs"]
+        ))
+        g.add_task(task)
+        added_task = g.tasks.get(task_id)
+        self.assertEqual(added_task, task)
+        # TODO: Graph.adj_list is not updated when using add_task()
+
+        # Remove a task that does not exist will raise a RuntimeError
+        with self.assertRaises(RuntimeError):
+            g.remove_task("ABC")
+        # Remove a task
+        # The task_id should be removed from g.tasks and g.adj_list
+        remove_task_id = "model_segments"
+        g.remove_task(remove_task_id)
+        self.assertNotIn(remove_task_id, g.tasks.keys())
+        self.assertNotIn(remove_task_id, g.adj_list.keys())
+        for adj_list in g.adj_list.values():
+            self.assertNotIn(remove_task_id, adj_list)
+
