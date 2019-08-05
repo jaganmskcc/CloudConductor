@@ -101,8 +101,8 @@ class RecodeVCF(Module):
         self.add_argument("recode_vcf",         is_required=True,   is_resource=True)   # Path to RecodeVCF.py executable
         self.add_argument("min-call-depth",     is_required=True,   default_value=10)   # Minimum reads supporting an allele to call a GT
         self.add_argument("info-columns",       is_required=False)                      # Optional list of INFO column names to include in output
-        self.add_argument("nr_cpus",            is_required=True,   default_value=1)
-        self.add_argument("mem",                is_required=True,   default_value=2)
+        self.add_argument("nr_cpus",            is_required=True,   default_value=2)
+        self.add_argument("mem",                is_required=True,   default_value=10)
 
     def define_output(self):
         # Declare recoded VCF output filename
