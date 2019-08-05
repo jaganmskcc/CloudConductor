@@ -1,21 +1,11 @@
 import os
-from importlib.machinery import SourceFileLoader
-from unittest import TestCase
 from System.Graph import Graph, Task
+from tests.base import CloudConductorTest
 
-TESTS_DIR = os.path.dirname(__file__)
 
-
-class TestGraph(TestCase):
-    graph_config = os.path.join(TESTS_DIR, "fixtures", "cnv.config")
-    cycle_config = os.path.join(TESTS_DIR, "fixtures", "cycle.config")
-
-    def setUp(self):
-        cc = SourceFileLoader(
-            "CloudConductor",
-            os.path.join(os.path.dirname(TESTS_DIR), "CloudConductor")
-        ).load_module()
-        cc.configure_import_paths()
+class TestGraph(CloudConductorTest):
+    graph_config = os.path.join(CloudConductorTest.TESTS_DIR, "fixtures", "cnv.config")
+    cycle_config = os.path.join(CloudConductorTest.TESTS_DIR, "fixtures", "cycle.config")
 
     def test_graph_to_text(self):
         g = Graph(self.graph_config)
