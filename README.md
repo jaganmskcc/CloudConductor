@@ -1,5 +1,9 @@
 <div align=center><img src="docs/_static/cloud-conductor-logo-colored.png" alt="CC" width=450 height=225 align="middle"/></div>
 
+<!-- badges: start -->
+[![Build Status](https://travis-ci.org/labdave/CloudConductor.svg?branch=qiu_test)](https://travis-ci.org/labdave/CloudConductor)
+<!-- badges: end -->
+
 ## CloudConductor: Simplified Bioinformatics
 
 **CloudConductor** is a cloud-based workflow engine for defining and executing bioinformatics pipelines in a cloud environment. 
