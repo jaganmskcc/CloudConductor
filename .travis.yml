@@ -6,8 +6,7 @@ branches:
   - qiu_test
 cache: pip
 install:
-  - pip install -r requirements.txt
-  - pip install coverage python-coveralls
+  - pip install coverage python-coveralls configobj jsonschema requests
 script: coverage run --source=. -m unittest discover -s tests -p "test_*.py"
 after_success:
   - coveralls
