@@ -740,7 +740,7 @@ class DepthOfCoverage(_GATKBase):
         self.add_argument("bam",            is_required=True)
         self.add_argument("bam_idx",        is_required=True)
         self.add_argument("ref",            is_required=True, is_resource=True)
-        self.add_argument("interval_list",  is_required=False, is_resource=True)
+        self.add_argument("interval_list",  is_required=False)
         self.add_argument("gene_list",      is_required=False, default_value=None)
         self.add_argument("read_group",     is_required=False, default_value=None)
         self.add_argument("unsafe",         is_required=False, default_value='ALLOW_N_CIGAR_READS')
