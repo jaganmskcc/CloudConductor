@@ -1,1 +1,1 @@
-from GAPipeline import GAPipeline, GAPReport
+from .GAPipeline import GAPipeline, GAPReport

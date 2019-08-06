@@ -5,7 +5,7 @@ class GAPFileMetadataError(Exception):
     # Base class for exception related to trying to access unavailable file metadata
     pass
 
-class GAPFile:
+class GAPFile(object):
     # Hold GAP-Related file information
     def __init__(self, file_id,  file_type, path, **kwargs):
 
@@ -19,7 +19,7 @@ class GAPFile:
         self.path = path
 
         # Check to make sure value is string (Path)
-        assert isinstance(self.path, basestring), "GAPFile value must be string! Recieved '%s' of type '%s'" % (path, type(path))
+        assert isinstance(self.path, str), "GAPFile value must be string! Recieved '%s' of type '%s'" % (path, type(path))
 
         # Path to a containing directory where resource is found
         self.containing_dir = kwargs.pop("containing_dir", None)

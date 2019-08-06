@@ -32,6 +32,10 @@ class GoogleCloudHelper(object):
         proc = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
         out, err = proc.communicate()
 
+        # Convert to string formats
+        out = out.decode("utf8")
+        err = err.decode("utf8")
+
         # Check if any error has appeared
         if len(err) != 0 and "error" in err.lower():
 
@@ -123,8 +127,8 @@ class GoogleCloudHelper(object):
 
             return GoogleCloudHelper.prices
         except BaseException as e:
-            if e.message != "":
-                logging.error("Could not obtain instance prices. The following error appeared: %s." % e.message)
+            if str(e) != "":
+                logging.error("Could not obtain instance prices. The following error appeared: %s." % e)
             raise
 
     @staticmethod
@@ -154,14 +158,14 @@ class GoogleCloudHelper(object):
 
         # Compress the message if needed
         if compress:
-            message = zlib.compress(message, 9)
+            message = zlib.compress(message.encode("utf8"), 9)
 
         # Encode the message if needed
         if encode:
-            message = base64.b64encode(message)
+            message = base64.b64encode(message).decode("utf8")
 
         # Parse the attributes and pack into a single data structure message
-        attrs = ",".join(["%s=%s" % (str(k), str(v)) for k, v in attributes.iteritems()])
+        attrs = ",".join(["%s=%s" % (str(k), str(v)) for k, v in attributes.items()])
 
         # Run command to publish message to the topic
         cmd = "gcloud --quiet --no-user-output-enabled pubsub topics publish %s --message \"%s\" --attribute=%s" \
@@ -203,6 +207,10 @@ class GoogleCloudHelper(object):
         proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
         out, err = proc.communicate()
 
+        # Convert to string formats
+        out = out.decode("utf8")
+        err = err.decode("utf8")
+
         # Load results into json
         disk_images = json.loads(out.rstrip())
         for disk_image in disk_images:
@@ -240,6 +248,10 @@ class GoogleCloudHelper(object):
         # Check to see if the reporting Pub/Sub topic exists
         cmd = "gcloud pubsub topics list --format=json"
         out, err = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True).communicate()
+
+        # Convert to string formats
+        out = out.decode("utf8")
+        err = err.decode("utf8")
 
         if len(err):
             logging.error("Cannot verify if the pubsub topic '%s' exists. The following error appeared: %s" % (topic_id, err))

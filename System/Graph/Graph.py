@@ -2,7 +2,7 @@ import logging
 from collections import OrderedDict
 
 from Config import ConfigParser
-from Task import Task
+from System.Graph import Task
 
 class Graph(object):
 
@@ -43,7 +43,7 @@ class Graph(object):
         self.adj_list.pop(task_id)
 
         # Remove all references to node in adjacency list
-        for adj_list in self.adj_list.itervalues():
+        for adj_list in self.adj_list.values():
             if task_id in adj_list:
                 adj_list.remove(task_id)
 
@@ -65,14 +65,14 @@ class Graph(object):
         return self.tasks[task_id]
 
     def get_unfinished_tasks(self):
-        return [task for task in self.tasks.values() if not task.is_complete()]
+        return [task for task in list(self.tasks.values()) if not task.is_complete()]
 
     def get_children(self, task_id):
         if task_id not in self.tasks:
             logging.error("Cannot list children for non-existant task: %s" % task_id)
             raise RuntimeError("Graph Error: Attempt to get children from nonexistant task!")
         dependents = []
-        for task, edges in self.adj_list.iteritems():
+        for task, edges in self.adj_list.items():
             if task_id in edges:
                 dependents.append(task)
         return dependents
@@ -129,7 +129,7 @@ class Graph(object):
 
     @property
     def __deprecated_tasks(self):
-        return [task.get_ID() for task in self.tasks.values() if task.is_deprecated()]
+        return [task.get_ID() for task in list(self.tasks.values()) if task.is_deprecated()]
 
     def __generate_graph(self):
 
@@ -145,7 +145,7 @@ class Graph(object):
 
     def __check_adjacency_list(self, runtime=False):
         errors = False
-        for task, adj_tasks in self.adj_list.iteritems():
+        for task, adj_tasks in self.adj_list.items():
 
             # Enforce uniqueness of task inputs. Duplicate entries are probably a mistake so better to just throw error
             if len(adj_tasks) != len(set(adj_tasks)):
@@ -219,7 +219,7 @@ class Graph(object):
         cycle = False
         visited = []
         recStack = []
-        for task_id in self.tasks.keys():
+        for task_id in list(self.tasks.keys()):
             if task_id not in visited:
                 if self.__is_cycle(task_id, visited, recStack):
                     cycle = True
@@ -252,7 +252,7 @@ class Graph(object):
 
     def __str__(self):
         to_ret = ""
-        for task_id, task in self.tasks.iteritems():
+        for task_id, task in self.tasks.items():
             to_ret += "%s\n" % task.get_task_string(input_from=self.adj_list[task_id])
         return to_ret
 

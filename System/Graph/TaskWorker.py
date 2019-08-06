@@ -3,8 +3,8 @@ import time
 import math
 import logging
 
-from System.Workers.Thread import Thread
-from ModuleExecutor import ModuleExecutor
+from System.Workers import Thread
+from System.Graph import ModuleExecutor
 
 class TaskWorker(Thread):
 
@@ -232,7 +232,7 @@ class TaskWorker(Thread):
                 with self.status_lock:
                     self.__err = False
 
-        except BaseException, e:
+        except BaseException as e:
             # Handle but do not raise exception if job was externally cancelled
             if self.__cancelled:
                 logging.warning("Task '%s' failed due to cancellation!" % self.task.get_ID())
@@ -286,10 +286,10 @@ class TaskWorker(Thread):
             # Unlock processor if it's been locked so logs can be returned
             if self.module_executor is not None and not self.__cancelled:
                 self.module_executor.save_logs()
-        except BaseException, e:
+        except BaseException as e:
             logging.error("Unable to return logs for task '%s'!" % self.task.get_ID())
-            if e.message != "":
-                logging.error("Received following error:\n%s" % e.message)
+            if str(e) != "":
+                logging.error("Received following error:\n%s" % e)
 
         # Try to destroy platform if it's not off
         try:
@@ -300,10 +300,10 @@ class TaskWorker(Thread):
 
             # Deallocate
             self.platform.deallocate_resources(self.proc)
-        except BaseException, e:
+        except BaseException as e:
             logging.error("Unable to destroy processor '%s' for task '%s'" % (self.proc.get_name(), self.task.get_ID()))
-            if e.message != "":
-                logging.error("Received following error:\n%s" % e.message)
+            if str(e) != "":
+                logging.error("Received following error:\n%s" % e)
 
     def __compute_disk_requirements(self, input_files, docker_image, input_multiplier=None):
         # Compute size of disk needed to store input/output files

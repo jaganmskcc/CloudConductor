@@ -3,7 +3,7 @@ import os
 from collections import OrderedDict
 
 from System.Datastore import GAPFile
-from Module import Module
+from Modules import Module
 
 class Splitter(Module):
 
@@ -32,7 +32,7 @@ class Splitter(Module):
             raise RuntimeError("Module declared split with duplicate id!")
 
         # Convert visible samples to list if its a string so we can always assume its a list
-        if isinstance(visible_samples, basestring):
+        if isinstance(visible_samples, str):
             visible_samples = [visible_samples]
 
         # Create split with the following samples visible
@@ -101,7 +101,7 @@ class Splitter(Module):
     def get_output_values(self):
         # Get list of current output values from all splits aggregated into single list
         outputs = []
-        for split_id, split_ouptut in self.output.iteritems():
-            outputs.extend(split_ouptut.values())
+        for split_id, split_ouptut in self.output.items():
+            outputs.extend(list(split_ouptut.values()))
         return outputs
 

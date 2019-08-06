@@ -1,13 +1,12 @@
 import threading
-import Queue
+import queue
 import logging
 import sys
 import time
 import abc
 
-class Thread(threading.Thread):
-    __metaclass__ = abc.ABCMeta
 
+class Thread(threading.Thread, metaclass=abc.ABCMeta):
     def __init__(self, err_msg):
         super(Thread, self).__init__()
 
@@ -15,7 +14,7 @@ class Thread(threading.Thread):
         self.daemon = True
 
         # Generating a queue for the exceptions that appear in the current thread
-        self.exception_queue = Queue.Queue()
+        self.exception_queue = queue.Queue()
 
         # Setting a variable for error message that might appear
         self.err_msg = err_msg
@@ -28,8 +27,8 @@ class Thread(threading.Thread):
         try:
             self.work()
         except BaseException as e:
-            if e.message != "":
-                logging.error("%s: %s." % (self.err_msg, e.message))
+            if str(e) != "":
+                logging.error("%s: %s." % (self.err_msg, e))
             else:
                 logging.error("%s!" % self.err_msg)
             self.exception_queue.put(sys.exc_info())
@@ -60,4 +59,4 @@ class Thread(threading.Thread):
 
             # Raise the received exception
             if exc_info is not None:
-                raise exc_info[0], exc_info[1], exc_info[2]
+                raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])

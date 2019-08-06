@@ -1,6 +1,6 @@
 import logging
 
-from Platform import Platform
+from System.Platform import Platform
 
 class InvalidStorageTypeError(Exception):
     pass
@@ -57,9 +57,9 @@ class StorageHelper(object):
         try:
             self.proc.wait_process(job_name)
             return True
-        except RuntimeError, e:
-            if e.message != "":
-                logging.debug("StorageHelper error for %s:\n%s" % (job_name, e.message))
+        except RuntimeError as e:
+            if str(e) != "":
+                logging.debug("StorageHelper error for %s:\n%s" % (job_name, e))
             return False
         except:
             logging.error("Unable to check path existence: %s" % path)
@@ -83,10 +83,10 @@ class StorageHelper(object):
             # Add them up and divide by billion bytes
             return sum(bytes)/(1024**3.0)
 
-        except BaseException, e:
+        except BaseException as e:
             logging.error("Unable to get file size: %s" % path)
-            if e.message != "":
-                logging.error("Received the following msg:\n%s" % e.message)
+            if str(e) != "":
+                logging.error("Received the following msg:\n%s" % e)
             raise
 
     def rm(self, path, job_name=None, log=True, wait=False, **kwargs):

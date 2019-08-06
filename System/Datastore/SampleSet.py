@@ -1,8 +1,7 @@
-import os
 import logging
 
 from Config import ConfigParser
-from GAPFile import GAPFile
+from System.Datastore import GAPFile
 
 class Sample(object):
 
@@ -14,7 +13,7 @@ class Sample(object):
 
     def __make_gap_files(self):
         # Convert path strings to GAPFile objects
-        for path_type, paths in self.paths.iteritems():
+        for path_type, paths in self.paths.items():
             # More than one path of same type
             if isinstance(paths, list):
                 for i in range(len(paths)):
@@ -34,7 +33,7 @@ class Sample(object):
     def get_data(self):
         return self.data
 
-class SampleSet (object):
+class SampleSet(object):
     # Container class that parses, holds, and provides access to Sample-level data declared in an external config file
     def __init__(self, sample_data_json):
 
@@ -50,9 +49,9 @@ class SampleSet (object):
         self.__check_samples()
 
         # Get types of data available
-        self.__file_types           = self.samples[0].get_paths().keys()
-        self.__sample_data_types    = self.samples[0].get_data().keys()
-        self.__global_data_types    = [x for x in self.config.keys() if x != "sample"]
+        self.__file_types           = list(self.samples[0].get_paths().keys())
+        self.__sample_data_types    = list(self.samples[0].get_data().keys())
+        self.__global_data_types    = [x for x in list(self.config.keys()) if x != "sample"]
 
         # Sample order
         self.sample_names = [sample.name for sample in self.samples]
@@ -131,7 +130,7 @@ class SampleSet (object):
         # Subset data to include only certain samples
 
         # Coerce single sample to list
-        if isinstance(samples, basestring):
+        if isinstance(samples, str):
             samples = [samples]
 
         sample_indices = [self.sample_names.index(sample) for sample in samples]
@@ -158,15 +157,15 @@ class SampleSet (object):
             self.__add_data(data, "sample_name", sample_name)
 
             # Add sample-level metadata
-            for sample_data_type, sample_data_val in sample.get_data().iteritems():
+            for sample_data_type, sample_data_val in sample.get_data().items():
                 self.__add_data(data, sample_data_type, sample_data_val)
 
             # Add sample paths
-            for sample_path_type, sample_path in sample.get_paths().iteritems():
+            for sample_path_type, sample_path in sample.get_paths().items():
                 self.__add_data(data, sample_path_type, sample_path)
 
         # Add any data not associated with a sample as global metadata
-        for global_data_type, global_data_val in self.config.iteritems():
+        for global_data_type, global_data_val in self.config.items():
             if global_data_type != "samples":
                 self.__add_data(data, global_data_type, global_data_val)
 

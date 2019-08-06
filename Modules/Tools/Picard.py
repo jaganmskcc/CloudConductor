@@ -57,7 +57,7 @@ class MarkDuplicates(Module):
         if not self.is_docker:
             java = self.get_argument("java")
             # Generate JVM arguments
-            jvm_options = "-Xmx{0:d}G -Djava.io.tmp={1}".format(mem * 4 / 5, "/tmp/")
+            jvm_options = "-Xmx{0:d}G -Djava.io.tmp={1}".format(mem * 4 // 5, "/tmp/")
             basecmd = "{0} {1} -jar {2}".format(java, jvm_options, picard)
 
         # Generate base cmd for running on docker
@@ -122,7 +122,7 @@ class CollectInsertSizeMetrics(Module):
         if not self.is_docker:
             java = self.get_argument("java")
             # Generate JVM arguments
-            jvm_options = "-Xmx{0}G -Djava.io.tmp={1}".format(mem * 4 / 5, "/tmp/")
+            jvm_options = "-Xmx{0}G -Djava.io.tmp={1}".format(mem * 4 // 5, "/tmp/")
             basecmd = "{0} {1} -jar {2}".format(java, jvm_options, picard)
 
         # Generate base cmd for running on docker
@@ -172,7 +172,7 @@ class SamToFastq(Module):
         if not self.is_docker:
             java = self.get_argument("java")
             # Generate JVM arguments
-            jvm_options = "-Xmx{0}G -Djava.io.tmp={1}".format(mem * 4 / 5, "/tmp/")
+            jvm_options = "-Xmx{0}G -Djava.io.tmp={1}".format(mem * 4 // 5, "/tmp/")
             basecmd = "{0} {1} -jar {2}".format(java, jvm_options, picard)
 
         # Generate base cmd for running on docker
@@ -224,7 +224,7 @@ class SortGVCF(Module):
         if not self.is_docker:
             java    = self.get_argument("java")
             mem     = self.get_argument("mem")
-            jvm_options = "-Xmx%dG -Djava.io.tmpdir=/tmp/" % (mem * 9 / 10)
+            jvm_options = "-Xmx%dG -Djava.io.tmpdir=/tmp/" % (mem * 9 // 10)
             picard_cmd = "{0} {1} -jar {2}".format(java, jvm_options, picard)
         else:
             picard_cmd = str(picard)
@@ -297,7 +297,7 @@ class DownsampleSam(Module):
         if not self.is_docker:
             java = self.get_argument("java")
             # Generate JVM arguments
-            jvm_options = "-Xmx{0:d}G -Djava.io.tmp={1}".format(mem * 4 / 5, "/tmp/")
+            jvm_options = "-Xmx{0:d}G -Djava.io.tmp={1}".format(mem * 4 // 5, "/tmp/")
             basecmd = "{0} {1} -jar {2}".format(java, jvm_options, picard)
 
         # Generate base cmd for running on docker
