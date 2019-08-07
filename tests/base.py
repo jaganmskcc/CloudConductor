@@ -26,6 +26,14 @@ class GooglePlatformTest(CloudConductorTest):
     TEST_PROJECT = "davelab-gcloud"
     TEST_ZONE = "us-east1-c"
 
+    __compute = None
+
+    @property
+    def compute_engine(self):
+        if self.__compute is None:
+            self.__compute = googleapiclient.discovery.build('compute', 'v1', cache_discovery=False)
+        return self.__compute
+
     def setUp(self):
         super().setUp()
         key_file = os.path.join(CloudConductorTest.TESTS_DIR, "fixtures", "GoogleKey.json")
@@ -46,14 +54,25 @@ class GooglePlatformTest(CloudConductorTest):
                 "Or, save the Base64 encoded json file content as environment variable named 'GoogleKey'\n"
             )
 
+    def get_instance_names(self):
+        result = self.compute_engine.instances().list(project=self.TEST_PROJECT, zone=self.TEST_ZONE).execute()
+        if result.get("items"):
+            return [item.get("name") for item in result.get("items")]
+        return []
+
     def delete_instance(self, instance_name):
-        compute = googleapiclient.discovery.build('compute', 'v1')
-        result = compute.instances().list(project=self.TEST_PROJECT, zone=self.TEST_ZONE).execute()
+        instances = self.get_instance_names()
+        if instance_name in instances:
+            self.compute_engine.instances().delete(
+                project=self.TEST_PROJECT,
+                zone=self.TEST_ZONE,
+                instance=instance_name
+            ).execute()
+
+    def assert_instance(self, instance_name):
+        result = self.compute_engine.instances().list(project=self.TEST_PROJECT, zone=self.TEST_ZONE).execute()
         if result.get("items"):
             instances = [item.get("name") for item in result.get("items")]
             if instance_name in instances:
-                compute.instances().delete(
-                    project=self.TEST_PROJECT,
-                    zone=self.TEST_ZONE,
-                    instance=instance_name
-                ).execute()
+                return True
+        return False
