@@ -1,0 +1,15 @@
+{
+    "paired_end": true,
+    "seq_platform": "Illumina",
+    "samples": [
+        {
+            "paths": {
+                "R1": "21281-T-1_S2_L001_R1_001_15729315309.fastq.gz",
+                "R2": "21281-T-1_S2_L001_R2_001_15729315310.fastq.gz"
+            },
+            "lib_name": "21281_T_1",
+            "name": "21281_T_1",
+            "is_tumor": true
+        }
+    ]
+}
