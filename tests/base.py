@@ -47,7 +47,7 @@ class GooglePlatformTest(CloudConductorTest):
             if "GoogleKey" in os.environ:
                 with open(key_file, 'w') as f:
                     f.write(base64.b64decode(os.environ["GoogleKey"]).decode().replace("\n", "\\n"))
-            os.system("gcloud auth activate-service-account --key-file %s" % key_file)
+            os.system("gcloud config set project davelab-gcloud")
 
         if not os.path.exists(key_file):
             raise FileNotFoundError(
