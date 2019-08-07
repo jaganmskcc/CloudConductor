@@ -79,3 +79,7 @@ _build
 target/
 
 \.vscode/
+
+tests/fixtures/GoogleKey\.json
+
+tests/fixtures/test-key\.json
