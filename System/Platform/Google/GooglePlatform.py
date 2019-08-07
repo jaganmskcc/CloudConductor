@@ -184,6 +184,6 @@ class GooglePlatform(Platform):
 
         # Declare if name of instance has changed
         if old_instance_name != instance_name:
-            logging.warn("Modified instance name from %s to %s for compatibility!" % (old_instance_name, instance_name))
+            logging.warning("Modified instance name from %s to %s for compatibility!" % (old_instance_name, instance_name))
 
         return instance_name
