@@ -6,7 +6,8 @@ branches:
   - qiu_test
 cache: pip
 install:
-  - pip install coverage python-coveralls configobj jsonschema requests
+  - pip install -r requirements.txt
+  - pip install coverage python-coveralls google-api-python-client oauth2client
 script: coverage run --source=. -m unittest discover -s tests -p "test_*.py"
 after_success:
   - coveralls
