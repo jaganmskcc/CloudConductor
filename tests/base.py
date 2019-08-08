@@ -65,6 +65,8 @@ class GooglePlatformTest(CloudConductorTest):
             )
 
     def get_instance_names(self):
+        """Gets the instance names from Google Cloud Compute Engine.
+        """
         result = self.compute_engine.instances().list(project=self.TEST_PROJECT, zone=self.TEST_ZONE).execute()
         if result.get("items"):
             return [item.get("name") for item in result.get("items")]
@@ -80,9 +82,13 @@ class GooglePlatformTest(CloudConductorTest):
             ).execute()
 
     def assert_instance(self, instance_name):
-        result = self.compute_engine.instances().list(project=self.TEST_PROJECT, zone=self.TEST_ZONE).execute()
-        if result.get("items"):
-            instances = [item.get("name") for item in result.get("items")]
-            if instance_name in instances:
-                return True
-        return False
+        """Asserts that an instance is in the Google Cloud Compute Engine.
+        """
+        instances = self.get_instance_names()
+        self.assertIn(instance_name, instances)
+
+    def assert_no_instance(self, instance_name):
+        """Asserts that an instance is not in the Google Cloud Compute Engine.
+        """
+        instances = self.get_instance_names()
+        self.assertNotIn(instance_name, instances)
