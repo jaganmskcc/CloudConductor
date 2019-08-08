@@ -13,7 +13,7 @@ class TestSystemPipeline(GooglePlatformTest):
     sample_config = os.path.join(pipeline_dir, "sample.json")
     pipeline_name = "test-pipeline"
 
-    def test_load_pipeline(self):
+    def test_load_and_validate_pipeline(self):
         g = GAPipeline(
             self.pipeline_name,
             graph_config=self.graph_config,
@@ -24,7 +24,7 @@ class TestSystemPipeline(GooglePlatformTest):
             final_output_dir="gs://davelab_public/cloudconductor_test/"
         )
         g.load()
-        # g.validate()
+        g.validate()
 
     def tearDown(self):
         self.delete_instance("helper-%s" % self.pipeline_name)
