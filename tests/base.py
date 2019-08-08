@@ -4,6 +4,7 @@ import base64
 import logging
 from importlib.machinery import SourceFileLoader
 from unittest import TestCase
+from oauth2client.service_account import ServiceAccountCredentials
 import googleapiclient
 from googleapiclient import discovery
 logger = logging.getLogger(__name__)
@@ -31,7 +32,14 @@ class GooglePlatformTest(CloudConductorTest):
     @property
     def compute_engine(self):
         if self.__compute is None:
-            self.__compute = googleapiclient.discovery.build('compute', 'v1', cache_discovery=False)
+            self.__compute = googleapiclient.discovery.build(
+                'compute',
+                'v1',
+                cache_discovery=False,
+                credentials=ServiceAccountCredentials.from_json_keyfile_name(
+                    os.path.join(CloudConductorTest.TESTS_DIR, "fixtures", "GoogleKey.json")
+                )
+            )
         return self.__compute
 
     def setUp(self):
