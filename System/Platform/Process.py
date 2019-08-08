@@ -1,4 +1,5 @@
 import subprocess as sp
+import logging
 
 class Process(sp.Popen):
 
@@ -62,3 +63,10 @@ class Process(sp.Popen):
 
     def needs_rerun(self):
         return self.to_rerun
+
+    def communicate(self, *args, **kwargs):
+        logging.debug("Running Command: %s" % self.command)
+        stdoutdata, stderrdata = super().communicate(*args, **kwargs)
+        logging.debug(stdoutdata)
+        logging.debug(stderrdata)
+        return stdoutdata, stderrdata
