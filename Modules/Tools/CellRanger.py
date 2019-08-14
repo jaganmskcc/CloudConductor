@@ -20,7 +20,8 @@ class CellRanger(Module):
     def define_output(self):
         # Declare cell ranger output dir
         sample_name = self.get_argument("sample_name")
-        self.add_output("cellranger_output_dir", sample_name, is_path=True)
+        cellranger_output_dir = os.path.join(self.output_dir, sample_name)
+        self.add_output("cellranger_output_dir", cellranger_output_dir, is_path=True)
 
     def define_command(self):
         # Generate command for running Cell Ranger
@@ -71,19 +72,19 @@ class CellRanger(Module):
         mv_R2_cmd = ""
         for i in range(len(R1)):
             new_R1 = os.path.join(fastq_dir,
-                                  "sample_S0_L000_R1_00{}.fastq.gz".format(
-                                      i))
+                                  "{0}_L000_R1_00{1}.fastq.gz".format(
+                                      sample_name, i))
             new_R2 = os.path.join(fastq_dir,
-                                  "sample_S0_L000_R2_00{}.fastq.gz".format(
-                                      i))
-            mv_R1_cmd += "mv {0} {1};".format(R1[i], new_R1)
-            mv_R2_cmd += "mv {0} {1};".format(R2[i], new_R2)
+                                  "{0}_L000_R2_00{1}.fastq.gz".format(
+                                      sample_name, i))
+            mv_R1_cmd += "mv -u {0} {1};".format(R1[i], new_R1)
+            mv_R2_cmd += "mv -u {0} {1};".format(R2[i], new_R2)
 
         # If interrupted, the lock file needs to be removed before restarting,
         # so we remove the lock file just in case it exists
         cmd = "cd {0}; source {1}; rm -f {0}{2}/_lock; mkdir -p {3}; {4} {5} " \
               "cellranger count --id={2} --fastqs={3} " \
-              "--transcriptome={6} --localcores={7} --localmem={8}".format(
+              "--transcriptome={6} --localcores={7} --localmem={8} !LOG3! ".format(
             wrk_dir, source_path, sample_name, fastq_dir, mv_R1_cmd, mv_R2_cmd,
             transcriptome, nr_cpus, mem)
 
