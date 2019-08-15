@@ -4,6 +4,31 @@ import copy
 from System.Datastore import GAPFile
 from Modules import Module
 
+
+def simplify_sample_ID(sample_ID):
+    # Define list of special characters: (s)ubmission, (l)ibrary, (c)apture
+    special_letters = ["s", "l", "c", "a"]
+
+    # Remove elements that start with a special letter and the following characters are numbers
+    valid = False
+    while not valid:
+
+        # Split current ID by the last underscore
+        possible_sample_ID, last_ID = sample_ID.rsplit("_", 1)
+
+        # Check if the ID after the last underscore is a special ID
+        if last_ID[0].lower() in special_letters and \
+                (last_ID[1:].lower().isdigit() or last_ID[1:].lower() == "none"):
+
+            sample_ID = possible_sample_ID
+
+        # The last ID is not special, so we should keep it as part of the ID
+        else:
+            valid = True
+
+    return sample_ID
+
+
 class ConcatFastq(Module):
     # Module designed to concatentate one or more R1, R2 files from the same sample
     # An example would be if you'd resequenced the same sample and wanted to used all sequence data as if it were a single FASTQ
@@ -11,7 +36,7 @@ class ConcatFastq(Module):
     # If 1 read pair: return original file name without doing anything
     def __init__(self, module_id, is_docker=False):
         super(ConcatFastq, self).__init__(module_id, is_docker)
-        self.output_keys    = ["R1", "R2"]
+        self.output_keys    = ["R1", "R2", "sample_name"]
 
     def define_input(self):
         self.add_argument("R1",         is_required=True)
@@ -41,6 +66,26 @@ class ConcatFastq(Module):
         else:
             extension = ".R2.fastq.gz" if r2[0].endswith(".gz") else "concat.R2.fastq"
             self.add_output("R2", self.generate_unique_file_name(extension=extension))
+
+        # Obtain the sample name(s)
+        sample_name = self.get_argument("sample_name")
+
+        # Check if there are more than one sample name
+        if isinstance(sample_name, list):
+
+            # Simplify the sample names and make them unique
+            samples = set([simplify_sample_ID(sample) for sample in sample_name])
+
+            # If more than one unique sample is found, throw a warning as this should NOT happen
+            if len(samples) > 1:
+                logging.warning("The input for readgroup creation contains more than one unique sample! "
+                                "The analysis might not be biologically correct as one readgroup should be "
+                                "associated with maximum one sample!")
+
+            # Obtain the first unique sample name
+            sample_name = next(iter(samples))
+
+        self.add_output("sample_name", sample_name, is_path=False)
 
     def define_command(self):
         # Generate command for running Fastqc
@@ -343,8 +388,23 @@ class GetReadGroup(Module):
         seq_platform = self.get_argument("seq_platform")
         fastq_header_data = out.lstrip("@").strip("\n").split(":")
 
-        # Generate the correct sample name
-        sample_name = self.get_argument("sample_name").rsplit("_", 1)[0]
+        # Obtain the sample name(s)
+        sample_name = self.get_argument("sample_name")
+
+        # Check if there are more than one sample name
+        if isinstance(sample_name, list):
+
+            # Simplify the sample names and make them unique
+            samples = set([simplify_sample_ID(sample) for sample in sample_name])
+
+            # If more than one unique sample is found, throw a warning as this should NOT happen
+            if len(samples) > 1:
+                logging.warning("The input for readgroup creation contains more than one unique sample! "
+                                "The analysis might not be biologically correct as one readgroup should be "
+                                "associated with maximum one sample!")
+
+            # Obtain the first unique sample name
+            sample_name = next(iter(samples))
 
         # Generating the read group information from command output
         rg_id = ":".join(fastq_header_data[0:4])  # Read Group ID
