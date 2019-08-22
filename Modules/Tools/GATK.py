@@ -8,6 +8,9 @@ class _GATKBase(Module):
     def __init__(self, module_id, is_docker=False):
         super(_GATKBase, self).__init__(module_id, is_docker)
 
+        # Initialize the gatk version
+        self.gatk_version = None
+
     def define_base_args(self):
 
         # Set GATK executable arguments
@@ -26,6 +29,18 @@ class _GATKBase(Module):
         self.add_argument("interval_list")
         self.add_argument("bed", is_resource=True)
 
+    def get_gatk_version(self):
+
+        # Generate the gatk version if it was not generated yet
+        if self.gatk_version is None:
+
+            gatk_version = self.get_argument("gatk_version")
+            gatk_version = str(gatk_version).lower().replace("gatk", "")
+            gatk_version = gatk_version.strip()
+            self.gatk_version = int(gatk_version.split(".")[0])
+
+        return self.gatk_version
+
     def get_gatk_command(self):
         # Get input arguments
         gatk    = self.get_argument("gatk")
@@ -33,13 +48,7 @@ class _GATKBase(Module):
         java = self.get_argument("java")
         jvm_options = "-Xmx{0}G -Djava.io.tmpdir={1}".format(mem * 4 // 5, "/tmp/")
 
-        # Determine numeric version of GATK
-        gatk_version = self.get_argument("gatk_version")
-        gatk_version = str(gatk_version).lower().replace("gatk","")
-        gatk_version = gatk_version.strip()
-        gatk_version = int(gatk_version.split(".")[0])
-
-        if gatk_version < 4:
+        if self.get_gatk_version() < 4:
             return "{0} {1} -jar {2} -T".format(java, jvm_options, gatk)
 
         # Generate base command with endpoint provided by docker
@@ -53,13 +62,7 @@ class _GATKBase(Module):
 
         """
 
-        # Determine numeric version of GATK
-        gatk_version = self.get_argument("gatk_version")
-        gatk_version = str(gatk_version).lower().replace("gatk", "")
-        gatk_version = gatk_version.strip()
-        gatk_version = int(gatk_version.split(".")[0])
-
-        if gatk_version < 4:
+        if self.get_gatk_version() < 4:
             return "-o"
 
         return "-O"
@@ -110,7 +113,6 @@ class HaplotypeCaller(_GATKBase):
         bed                    = self.get_argument("bed")
 
         gatk_cmd               = self.get_gatk_command()
-        gatk_version           = int(self.get_argument("gatk_version"))
         use_bqsr               = self.get_argument("use_bqsr")
         use_soft_clipped_bases = self.get_argument("use_soft_clipped_bases")
         nr_cpus                = self.get_argument("nr_cpus")
@@ -133,11 +135,11 @@ class HaplotypeCaller(_GATKBase):
             opts.append("-ERC GVCF")
 
         # Adding the BQSR for lower version of the GATK
-        if BQSR is not None and gatk_version < 4 and use_bqsr:
+        if BQSR is not None and self.get_gatk_version() < 4 and use_bqsr:
             opts.append("-BQSR {0}".format(BQSR))
 
         # Set the parallelism method
-        if gatk_version < 4:
+        if self.get_gatk_version() < 4:
             opts.append("-nct {0}".format(nr_cpus))
         else:
             opts.append("--native-pair-hmm-threads {0}".format(nr_cpus))
@@ -317,7 +319,6 @@ class BaseRecalibrator(_GATKBase):
         L               = self.get_argument("location")
         XL              = self.get_argument("excluded_location")
         nr_cpus         = self.get_argument("nr_cpus")
-        gatk_version    = self.get_argument("gatk_version")
         bqsr_report     = self.get_output("BQSR_report")
 
         gatk_cmd        = self.get_gatk_command()
@@ -329,7 +330,8 @@ class BaseRecalibrator(_GATKBase):
         opts.append("-I %s" % bam)
         opts.append("{0} {1}".format(output_file_flag, bqsr_report))
         opts.append("-R %s" % ref)
-        if gatk_version >= 4:
+
+        if self.get_gatk_version() >= 4:
             opts.append("--known-sites %s" % dbsnp)
         else:
             opts.append("-knownSites %s" % dbsnp)
@@ -569,7 +571,6 @@ class SplitNCigarReads(_GATKBase):
         bam        = self.get_argument("bam")
         output_bam = self.get_output("bam")
         ref        = self.get_argument("ref")
-        gatk_version = self.get_argument("gatk_version")
 
         # Get JVM options and GATK command
         gatk_cmd = self.get_gatk_command()
@@ -582,12 +583,7 @@ class SplitNCigarReads(_GATKBase):
         opts.append("-I {0}".format(bam))
         opts.append("{0} {1}".format(output_file_flag, output_bam))
 
-        # Determine numeric version of GATK to see if GATK3 options should be added
-        gatk_version = str(gatk_version).lower().replace("gatk","")
-        gatk_version = gatk_version.strip()
-        gatk_version = int(gatk_version.split(".")[0])
-
-        if gatk_version < 4:
+        if self.get_gatk_version() < 4:
             opts.append("-rf ReassignOneMappingQuality")
             opts.append("-RMQF 255")
             opts.append("-RMQT 60")
