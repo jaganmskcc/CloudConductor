@@ -381,6 +381,35 @@ class BGZip_vcf(Module):
         return cmd
 
 
+class BGZip_bed(Module):
+
+    def __init__(self, module_id, is_docker=False):
+        super(BGZip_bed, self).__init__(module_id, is_docker)
+        self.output_keys    = ["bed_gz"]
+
+    def define_input(self):
+        self.add_argument("bed",        is_required=True)
+        self.add_argument("bgzip",      is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=1)
+        self.add_argument("mem",        is_required=True, default_value=2)
+
+    def define_output(self):
+        # Declare recoded VCF output filename
+        bed_in = self.get_argument("bed")
+
+        self.add_output("bed_gz", "{0}.gz".format(bed_in))
+
+    def define_command(self):
+        # Get input arguments
+        bed_in      = self.get_argument("bed")
+        bgzip       = self.get_argument("bgzip")
+        bed_out     = self.get_output("bed_gz")
+
+        # Get final normalized VCF output file path
+        cmd = "{0} {1} > {2} !LOG3!".format(bgzip, bed_in, bed_out)
+        return cmd
+
+
 class GetReadGroup(Module):
     def __init__(self, module_id, is_docker = False):
         super(GetReadGroup, self).__init__(module_id, is_docker)
