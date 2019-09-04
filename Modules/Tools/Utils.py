@@ -379,10 +379,10 @@ class IndexBED(Module):
         return "{0} -p bed {1} !LOG3!".format(tabix, bed_in)
 
 
-class BGZipVcf(Module):
+class BGZipVCF(Module):
 
     def __init__(self, module_id, is_docker=False):
-        super(BGZipVcf, self).__init__(module_id, is_docker)
+        super(BGZipVCF, self).__init__(module_id, is_docker)
         self.output_keys    = ["vcf_gz"]
 
     def define_input(self):
@@ -408,10 +408,10 @@ class BGZipVcf(Module):
         return cmd
 
 
-class BGZipBed(Module):
+class BGZipBED(Module):
 
     def __init__(self, module_id, is_docker=False):
-        super(BGZipBed, self).__init__(module_id, is_docker)
+        super(BGZipBED, self).__init__(module_id, is_docker)
         self.output_keys    = ["bed_gz"]
 
     def define_input(self):
