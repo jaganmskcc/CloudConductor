@@ -352,6 +352,33 @@ class IndexVCF(Module):
         return "{0} {1} !LOG2!; {2} index -f {3} !LOG2!".format(bgzip, vcf_in, bcftools, vcf_out)
 
 
+class IndexBED(Module):
+
+    def __init__(self, module_id, is_docker=False):
+        super(IndexBED, self).__init__(module_id, is_docker)
+        self.output_keys    = ["bed_gz_idx"]
+
+    def define_input(self):
+        self.add_argument("bed_gz",     is_required=True)
+        self.add_argument("tabix",      is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=2)
+        self.add_argument("mem",        is_required=True, default_value=4)
+
+    def define_output(self):
+        # Declare recoded VCF output filename
+        bed_in = self.get_argument("bed_gz")
+
+        self.add_output("bed_gz_idx", "{0}.tbi".format(bed_in))
+
+    def define_command(self):
+        # Get input arguments
+        bed_in      = self.get_argument("bed_gz")
+        tabix       = self.get_argument("tabix")
+
+        # return the command line
+        return "{0} -p bed {1} !LOG3!".format(tabix, bed_in)
+
+
 class BGZipVcf(Module):
 
     def __init__(self, module_id, is_docker=False):
