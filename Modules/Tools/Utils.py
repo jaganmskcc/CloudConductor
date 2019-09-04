@@ -352,10 +352,10 @@ class IndexVCF(Module):
         return "{0} {1} !LOG2!; {2} index -f {3} !LOG2!".format(bgzip, vcf_in, bcftools, vcf_out)
 
 
-class BGZip_vcf(Module):
+class BGZipVcf(Module):
 
     def __init__(self, module_id, is_docker=False):
-        super(BGZip_vcf, self).__init__(module_id, is_docker)
+        super(BGZipVcf, self).__init__(module_id, is_docker)
         self.output_keys    = ["vcf_gz"]
 
     def define_input(self):
@@ -381,10 +381,10 @@ class BGZip_vcf(Module):
         return cmd
 
 
-class BGZip_bed(Module):
+class BGZipBed(Module):
 
     def __init__(self, module_id, is_docker=False):
-        super(BGZip_bed, self).__init__(module_id, is_docker)
+        super(BGZipBed, self).__init__(module_id, is_docker)
         self.output_keys    = ["bed_gz"]
 
     def define_input(self):
