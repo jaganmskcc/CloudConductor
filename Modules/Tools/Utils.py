@@ -352,10 +352,10 @@ class IndexVCF(Module):
         return "{0} {1} !LOG2!; {2} index -f {3} !LOG2!".format(bgzip, vcf_in, bcftools, vcf_out)
 
 
-class BGZip(Module):
+class BGZip_vcf(Module):
 
     def __init__(self, module_id, is_docker=False):
-        super(BGZip, self).__init__(module_id, is_docker)
+        super(BGZip_vcf, self).__init__(module_id, is_docker)
         self.output_keys    = ["vcf_gz"]
 
     def define_input(self):
