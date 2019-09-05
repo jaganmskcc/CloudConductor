@@ -404,7 +404,7 @@ class BGZipVCF(Module):
         vcf_out     = self.get_output("vcf_gz")
 
         # Get final normalized VCF output file path
-        cmd = "{0} {1} > {2} !LOG3!".format(bgzip, vcf_in, vcf_out)
+        cmd = "{0} -c {1} > {2} !LOG2!".format(bgzip, vcf_in, vcf_out)
         return cmd
 
 
@@ -433,7 +433,7 @@ class BGZipBED(Module):
         bed_out     = self.get_output("bed_gz")
 
         # Get final normalized VCF output file path
-        cmd = "{0} {1} > {2} !LOG3!".format(bgzip, bed_in, bed_out)
+        cmd = "{0} -c {1} > {2} !LOG2!".format(bgzip, bed_in, bed_out)
         return cmd
 
 
