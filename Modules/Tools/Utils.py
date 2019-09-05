@@ -376,7 +376,7 @@ class IndexBED(Module):
         tabix       = self.get_argument("tabix")
 
         # return the command line
-        return "{0} -p bed {1} !LOG3!".format(tabix, bed_in)
+        return "{0} -p bed {1} !LOG2!".format(tabix, bed_in)
 
 
 class BGZipVCF(Module):
