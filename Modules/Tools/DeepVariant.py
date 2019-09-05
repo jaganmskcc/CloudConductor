@@ -1,11 +1,10 @@
-import os
-
 from Modules import Module
+
 
 class DeepVariant(Module):
     def __init__(self, module_id, is_docker = True):
         super(DeepVariant, self).__init__(module_id, is_docker)
-        self.output_keys = ["vcf_gz","vcf_tbi","gvcf_gz","gvcf_tbi"]
+        self.output_keys = ["vcf_gz", "vcf_tbi", "gvcf_gz", "gvcf_tbi"]
 
     def define_input(self):
         self.add_argument("sample_name",    is_required=True)
@@ -29,15 +28,15 @@ class DeepVariant(Module):
         gvcf_file = self.generate_unique_file_name(extension="{0}.g.vcf.gz".format(sample_name))
         gvcf_tbi_file = "{0}.tbi".format(gvcf_file)
 
-        self.add_output("vcf_gz",vcf_file)
-        self.add_output("vcf_tbi",vcf_tbi_file)
-        self.add_output("gvcf_gz",gvcf_file)
-        self.add_output("gvcf_tbi",gvcf_tbi_file)
+        self.add_output("vcf_gz",   vcf_file)
+        self.add_output("vcf_tbi",  vcf_tbi_file)
+        self.add_output("gvcf_gz",  gvcf_file)
+        self.add_output("gvcf_tbi", gvcf_tbi_file)
 
     def define_command(self):
 
         # Get program options
-        modeltype          = self.get_argument("modeltype")
+        modeltype           = self.get_argument("modeltype")
         bamfile             = self.get_argument("bam")
         refgenome           = self.get_argument("ref")
         regionfile          = self.get_argument("bed")
@@ -47,8 +46,6 @@ class DeepVariant(Module):
         # Get output keys
         vcf_file            = self.get_output("vcf_gz")
         gvcf_file           = self.get_output("gvcf_gz")
-
-
 
         cmd = "{0} --model_type={1} --ref={2} --reads={3} --regions={4} --output_vcf={5} --output_gvcf={6} " \
               "--num_shards={7}".format(deepvariant, modeltype, refgenome, bamfile, regionfile, vcf_file,
