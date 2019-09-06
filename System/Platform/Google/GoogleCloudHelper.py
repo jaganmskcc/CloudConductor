@@ -140,7 +140,9 @@ class GoogleCloudHelper(object):
         cmd = "gcloud compute machine-types list --filter='zone:(%s)' --format=json" % zone
         machine_types = GoogleCloudHelper.run_cmd(cmd, err_msg="Cannot obtain machine types on GCP")
 
-        GoogleCloudHelper.machine_types = json.loads(machine_types)
+        # Select only F1, G1, N1 instances
+        GoogleCloudHelper.machine_types = [ m_type for m_type in json.loads(machine_types)
+                                            if m_type["name"][:2].lower() in ["f1", "g1", "n1"]]
 
         return GoogleCloudHelper.machine_types
 
