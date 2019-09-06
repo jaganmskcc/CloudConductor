@@ -14,7 +14,8 @@ class Strelka2(Module):
         self.add_argument("bam",            is_required=True)
         self.add_argument("bam_idx",        is_required=True)
         self.add_argument("ref",            is_required=True, is_resource=True)
-        self.add_argument("bed_gz",         is_required=True, is_resource=True)
+        self.add_argument("bed_gz",         is_required=True)
+        self.add_argument("bed_tbi",        is_required=True)
         self.add_argument("strelka2",       is_required=True, is_resource=True)
 
         self.add_argument("nr_cpus",        is_required=True, default_value=32)
