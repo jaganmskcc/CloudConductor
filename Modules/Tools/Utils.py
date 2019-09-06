@@ -356,7 +356,7 @@ class IndexBED(Module):
 
     def __init__(self, module_id, is_docker=False):
         super(IndexBED, self).__init__(module_id, is_docker)
-        self.output_keys    = ["bed_gz_idx"]
+        self.output_keys    = ["bed_tbi"]
 
     def define_input(self):
         self.add_argument("bed_gz",     is_required=True)
@@ -368,7 +368,7 @@ class IndexBED(Module):
         # Declare recoded VCF output filename
         bed_in = self.get_argument("bed_gz")
 
-        self.add_output("bed_gz_idx", "{0}.tbi".format(bed_in))
+        self.add_output("bed_tbi", "{0}.tbi".format(bed_in))
 
     def define_command(self):
         # Get input arguments
