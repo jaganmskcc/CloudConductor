@@ -58,9 +58,9 @@ class ModuleExecutor(object):
 
                 # Check to see if sample name is provided for the current file and add it if there is
                 if task_input.sample_name is not None:
-                    dest_filename = f'{task_input.sample_name}_{task_input.filename}'
+                    dest_filename = "{0}_{1}".format(task_input.sample_name, task_input.filename)
                 else:
-                    dest_filename = f'{task_input.filename}'
+                    dest_filename = task_input.filename
 
                 # Generate complete transfer path
                 dest_path = os.path.join(dest_dir, dest_filename)
@@ -68,7 +68,7 @@ class ModuleExecutor(object):
                 # Check to see if transferring file would overwrite existing file
                 if dest_path in dest_seen:
                     # Add unique tag to destination filename to prevent overwrite
-                    dest_filename = f'{Platform.generate_unique_id()}_{dest_filename}'
+                    dest_filename = "{0}_{1}".format(Platform.generate_unique_id(), dest_filename)
                     dest_path = os.path.join(dest_dir, dest_filename)
 
                 # If prefix, set the destination path to the destination dir and keep original filename
