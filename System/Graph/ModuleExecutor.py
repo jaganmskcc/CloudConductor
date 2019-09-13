@@ -56,21 +56,28 @@ class ModuleExecutor(object):
                 job_name = "load_input_%s_%s_%s" % (self.task_id, task_input.get_type(), count)
                 logging.debug("Input path: %s, transfer path: %s" % (task_input.get_path(), src_path))
 
+                # Check to see if sample name is provided for the current file and add it if there is
+                if task_input.sample_name is not None:
+                    dest_filename = f'{task_input.sample_name}_{task_input.filename}'
+                else:
+                    dest_filename = f'{task_input.filename}'
+
+                # Generate complete transfer path
+                dest_path = os.path.join(dest_dir, dest_filename)
 
                 # Check to see if transferring file would overwrite existing file
-                # (e.g. cuffquant.cxb from different src folders)
-                dest_filename = os.path.join(dest_dir, src_path.rstrip("/").split("/")[-1])
-                logging.debug("Orig Dest filename: {0}".format(dest_filename))
-                if dest_filename in dest_seen:
+                if dest_path in dest_seen:
                     # Add unique tag to destination filename to prevent overwrite
-                    dest_filename = "{0}_{1}".format(Platform.generate_unique_id(), task_input.filename)
-                    # Update dest path for transfer
+                    dest_filename = f'{Platform.generate_unique_id()}_{dest_filename}'
                     dest_path = os.path.join(dest_dir, dest_filename)
-                    logging.debug("New Dest filename: {0}".format(dest_path))
-                else:
-                    # Just transfer file into working directory without changing any names
-                    dest_path = dest_dir
+
+                # If prefix, set the destination path to the destination dir and keep original filename
+                if task_input.is_prefix():
                     dest_filename = None
+                    dest_path = dest_dir
+
+                # Show the final log file
+                logging.debug("Dest filename: {0}".format(dest_path))
 
                 # Move file to dest_path
                 self.storage_helper.mv(src_path=src_path,
