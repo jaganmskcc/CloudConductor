@@ -71,13 +71,13 @@ class ModuleExecutor(object):
                     dest_filename = "{0}_{1}".format(Platform.generate_unique_id(), dest_filename)
                     dest_path = os.path.join(dest_dir, dest_filename)
 
-                # If prefix, set the destination path to the destination dir and keep original filename
-                if task_input.is_prefix():
+                # Else set the destination path to the destination dir and keep original filename
+                else:
                     dest_filename = None
                     dest_path = dest_dir
 
                 # Show the final log file
-                logging.debug("Dest filename: {0}".format(dest_path))
+                logging.debug("Destination: {0}".format(dest_path))
 
                 # Move file to dest_path
                 self.storage_helper.mv(src_path=src_path,
