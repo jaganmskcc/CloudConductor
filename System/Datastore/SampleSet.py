@@ -18,11 +18,11 @@ class Sample(object):
             if isinstance(paths, list):
                 for i in range(len(paths)):
                     file_id = "%s_%s_%s" % (self.name, path_type, i)
-                    self.paths[path_type][i] = GAPFile(file_id, path_type, paths[i])
+                    self.paths[path_type][i] = GAPFile(file_id, path_type, paths[i], sample_name=self.name)
             # One path of a given type
             else:
                 file_id = "%s_%s_1" % (self.name, path_type)
-                self.paths[path_type] = GAPFile(file_id, path_type, paths)
+                self.paths[path_type] = GAPFile(file_id, path_type, paths, sample_name=self.name)
 
     def get_name(self):
         return self.name

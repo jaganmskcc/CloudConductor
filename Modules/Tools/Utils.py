@@ -171,8 +171,8 @@ class RecodeVCF(Module):
         self.add_argument("recode_vcf",         is_required=True,   is_resource=True)   # Path to RecodeVCF.py executable
         self.add_argument("min-call-depth",     is_required=True,   default_value=10)   # Minimum reads supporting an allele to call a GT
         self.add_argument("info-columns",       is_required=False)                      # Optional list of INFO column names to include in output
-        self.add_argument("nr_cpus",            is_required=True,   default_value=1)
-        self.add_argument("mem",                is_required=True,   default_value=2)
+        self.add_argument("nr_cpus",            is_required=True,   default_value=2)
+        self.add_argument("mem",                is_required=True,   default_value=10)
 
     def define_output(self):
         # Declare recoded VCF output filename
@@ -352,10 +352,37 @@ class IndexVCF(Module):
         return "{0} {1} !LOG2!; {2} index -f {3} !LOG2!".format(bgzip, vcf_in, bcftools, vcf_out)
 
 
-class BGZip(Module):
+class IndexBED(Module):
 
     def __init__(self, module_id, is_docker=False):
-        super(BGZip, self).__init__(module_id, is_docker)
+        super(IndexBED, self).__init__(module_id, is_docker)
+        self.output_keys    = ["bed_tbi"]
+
+    def define_input(self):
+        self.add_argument("bed_gz",     is_required=True)
+        self.add_argument("tabix",      is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=2)
+        self.add_argument("mem",        is_required=True, default_value=4)
+
+    def define_output(self):
+        # Declare recoded VCF output filename
+        bed_in = self.get_argument("bed_gz")
+
+        self.add_output("bed_tbi", "{0}.tbi".format(bed_in))
+
+    def define_command(self):
+        # Get input arguments
+        bed_in      = self.get_argument("bed_gz")
+        tabix       = self.get_argument("tabix")
+
+        # return the command line
+        return "{0} -p bed {1} !LOG2!".format(tabix, bed_in)
+
+
+class BGZipVCF(Module):
+
+    def __init__(self, module_id, is_docker=False):
+        super(BGZipVCF, self).__init__(module_id, is_docker)
         self.output_keys    = ["vcf_gz"]
 
     def define_input(self):
@@ -377,7 +404,36 @@ class BGZip(Module):
         vcf_out     = self.get_output("vcf_gz")
 
         # Get final normalized VCF output file path
-        cmd = "{0} {1} > {2} !LOG3!".format(bgzip, vcf_in, vcf_out)
+        cmd = "{0} -c {1} > {2} !LOG2!".format(bgzip, vcf_in, vcf_out)
+        return cmd
+
+
+class BGZipBED(Module):
+
+    def __init__(self, module_id, is_docker=False):
+        super(BGZipBED, self).__init__(module_id, is_docker)
+        self.output_keys    = ["bed_gz"]
+
+    def define_input(self):
+        self.add_argument("bed",        is_required=True)
+        self.add_argument("bgzip",      is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=1)
+        self.add_argument("mem",        is_required=True, default_value=2)
+
+    def define_output(self):
+        # Declare recoded VCF output filename
+        bed_in = self.get_argument("bed")
+
+        self.add_output("bed_gz", "{0}.gz".format(bed_in))
+
+    def define_command(self):
+        # Get input arguments
+        bed_in      = self.get_argument("bed")
+        bgzip       = self.get_argument("bgzip")
+        bed_out     = self.get_output("bed_gz")
+
+        # Get final normalized VCF output file path
+        cmd = "{0} -c {1} > {2} !LOG2!".format(bgzip, bed_in, bed_out)
         return cmd
 
 
