@@ -740,8 +740,8 @@ class DepthOfCoverage(_GATKBase):
         self.add_argument("gene_list",      is_required=False, default_value=None)
         self.add_argument("read_group",     is_required=False, default_value=None)
         self.add_argument("unsafe",         is_required=False, default_value='ALLOW_N_CIGAR_READS')
-        self.add_argument("nr_cpus",        is_required=True, default_value=2)
-        self.add_argument("mem",            is_required=True, default_value=4)
+        self.add_argument("nr_cpus",        is_required=True, default_value=8)
+        self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
 
     def define_output(self):
         # Declare unique file name for a single output file
