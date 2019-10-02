@@ -15,7 +15,7 @@ from cryptography.hazmat.backends import default_backend
 
 class CloudPlatform(object, metaclass=abc.ABCMeta):
 
-    CONFIG_SPEC = None
+    CONFIG_SPEC = f"{os.path.dirname(__file__)}/Platform.validate"
 
     CLOUD_INSTANCE_CLASS = None
 
