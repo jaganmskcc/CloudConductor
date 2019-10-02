@@ -17,17 +17,13 @@ class CloudPlatform(object, metaclass=abc.ABCMeta):
 
     CONFIG_SPEC = f"{os.path.dirname(__file__)}/Platform.validate"
 
-    CLOUD_INSTANCE_CLASS = None
-
     def __init__(self, name, platform_config_file, final_output_dir):
 
         # Platform name
         self.name = name
 
         # Check if CloudInstance class is set by the user
-        if CloudPlatform.CLOUD_INSTANCE_CLASS is None:
-            logging.error(f'Platform "{self.__class__.__name__}" does not have a CLOUD_INSTANCE_CLASS defined!')
-            raise RuntimeError(f'Platform "{self.__class__.__name__}" does not have a CLOUD_INSTANCE_CLASS defined!')
+        self.CloudInstanceClass = self.get_cloud_instance_class()
 
         # Initialize platform config
         config_parser       = ConfigParser(platform_config_file, self.CONFIG_SPEC)
@@ -162,7 +158,7 @@ class CloudPlatform(object, metaclass=abc.ABCMeta):
 
         # Initialize new instance
         try:
-            self.instances[inst_name] = self.CLOUD_INSTANCE_CLASS(inst_name, nr_cpus, mem, disk_space, **kwargs)
+            self.instances[inst_name] = self.CloudInstanceClass(inst_name, nr_cpus, mem, disk_space, **kwargs)
 
             logging.info(f'({inst_name}) Instance was successfully created!')
 
@@ -242,6 +238,10 @@ class CloudPlatform(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def clean_up(self):
+        pass
+
+    @abc.abstractmethod
+    def get_cloud_instance_class(self):
         pass
 
     # PRIVATE UTILITY METHODS
