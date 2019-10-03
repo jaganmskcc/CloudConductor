@@ -87,6 +87,9 @@ class CloudPlatform(object, metaclass=abc.ABCMeta):
         self.ssh_private_key = None
         self.authenticate_cc()
 
+        # Authenticate the platform when done
+        self.authenticate_platform()
+
     def authenticate_cc(self):
 
         # Obtain the home directory of the current user
