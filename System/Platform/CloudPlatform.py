@@ -108,11 +108,14 @@ class CloudPlatform(object, metaclass=abc.ABCMeta):
             self.__create_ssh_key(private_key)
             self.ssh_private_key = private_key
 
-    def get_instance(self, task_id, nr_cpus, mem, disk_space, **kwargs):
+    def get_instance(self, nr_cpus, mem, disk_space, **kwargs):
         """Initialize new instance and register with platform"""
 
         # Standardize instance type
         nr_cpus, mem, disk_space = self.standardize_instance_type(nr_cpus, mem, disk_space)
+
+        # Obtain task_id that will be used
+        task_id = kwargs.pop("task_id", None)
 
         # Generate unique instance name
         while True:
