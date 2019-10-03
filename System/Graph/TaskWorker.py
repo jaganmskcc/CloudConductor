@@ -112,9 +112,6 @@ class TaskWorker(Thread):
             disk_space      = self.__compute_disk_requirements(input_files, docker_image)
             logging.debug("(%s) CPU: %s, Mem: %s, Disk space: %s" % (self.task.get_ID(), cpus, mem, disk_space))
 
-            # Wait for platform to have enough resources to run task
-            while not self.platform.can_make_processor(cpus, mem, disk_space) and not self.is_cancelled():
-                time.sleep(5)
 
             # Quit if pipeline is cancelled
             self.__check_cancelled()
@@ -135,11 +132,11 @@ class TaskWorker(Thread):
             # Create the specific processor for the task
             if has_command:
                 # Get processor capable of running job
-                self.proc = self.platform.get_processor(self.task.get_ID(), cpus, mem, disk_space)
+                self.proc = self.platform.get_instance(cpus, mem, disk_space, task_id=self.task.get_ID())
                 logging.debug("(%s) Successfully acquired processor!" % self.task.get_ID())
             else:
                 # Get small processor
-                self.proc = self.platform.get_processor(self.task.get_ID(), 1, 1, disk_space)
+                self.proc = self.platform.get_instance(1, 1, disk_space, task_id=self.task.get_ID())
                 logging.debug("(%s) Successfully acquired processor!" % self.task.get_ID())
 
             # Check to see if pipeline has been cancelled
@@ -298,8 +295,6 @@ class TaskWorker(Thread):
             self.proc.destroy(wait=False)
             self.proc.wait_process("destroy")
 
-            # Deallocate
-            self.platform.deallocate_resources(self.proc)
         except BaseException as e:
             logging.error("Unable to destroy processor '%s' for task '%s'" % (self.proc.get_name(), self.task.get_ID()))
             if str(e) != "":

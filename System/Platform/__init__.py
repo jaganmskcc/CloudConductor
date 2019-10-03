@@ -4,3 +4,5 @@ from .Platform import Platform
 from .StorageHelper import StorageHelper
 from .DockerHelper import DockerHelper
 
+from .CloudPlatform import CloudPlatform
+from .CloudInstance import CloudInstance
