@@ -1,4 +1,2 @@
-from .GoogleCloudHelper import GoogleCloudHelper, GoogleResourceNotFound
-from .Instance import Instance
-from .PreemptibleInstance import PreemptibleInstance
+from .GoogleInstance import GoogleInstance
 from .GooglePlatform import GooglePlatform

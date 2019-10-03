@@ -1,189 +1,28 @@
-import os
-import logging
-import subprocess as sp
-import tempfile
 
-from System.Platform import Platform
-from System.Platform.Google import Instance, PreemptibleInstance, GoogleCloudHelper
+from System.Platform import CloudPlatform
+from System.Platform.Google import GoogleInstance
 
-class GooglePlatform(Platform):
 
-    CONFIG_SPEC = "System/Platform/Google/GooglePlatform.validate"
+class GooglePlatform(CloudPlatform):
 
-    def __init__(self, name, platform_config_file, final_output_dir):
-        # Call super constructor from Platform
-        super(GooglePlatform, self).__init__(name, platform_config_file, final_output_dir)
-
-        # Get google access fields from JSON file
-        self.key_file       = self.config["service_account_key_file"]
-        self.service_acct   = GoogleCloudHelper.get_field_from_key_file(self.key_file, field_name="client_email")
-        self.google_project = GoogleCloudHelper.get_field_from_key_file(self.key_file, field_name="project_id")
-
-        # Get Google compute zone from config
-        self.zone = self.config["zone"]
-
-        # Determine whether to distribute processors across zones randomly
-        self.randomize_zone = self.config["randomize_zone"]
-
-        # Obtain the reporting topic
-        self.report_topic   = self.config["report_topic"]
-        self.report_topic_validated = False
-
-        # Boolean for whether worker instance create by platform will be preemptible
-        self.is_preemptible = self.config["task_processor"]["is_preemptible"]
-
-        # Use authentication key file to gain access to google cloud project using Oauth2 authentication
-        GoogleCloudHelper.authenticate(self.key_file)
-
-        # Create local gcloud SSH key to be able to directly use SSH
-        GoogleCloudHelper.configure_gcloud_ssh()
-
-    def validate(self):
-        # Check that final output dir begins with gs://
-        if not self.final_output_dir.startswith("gs://"):
-            logging.error("Invalid final output directory: %s. Google bucket paths must begin with 'gs://'"
-                          % self.final_output_dir)
-            raise IOError("Invalid final output directory!")
-
-        # Make gs bucket if it doesn't exists already
-        gs_bucket = GoogleCloudHelper.get_bucket_from_path(self.final_output_dir)
-        if not GoogleCloudHelper.bucket_exists(gs_bucket):
-            logging.info("Bucket {0} does not exists. Creating it now!".format(gs_bucket))
-            region = GoogleCloudHelper.get_region(self.zone)
-            GoogleCloudHelper.mb(gs_bucket, project=self.google_project, region=region)
-
-        # Set the minimum disk size based on size of disk image
-        disk_image = self.config["task_processor"]["disk_image"]
-        disk_image_info = GoogleCloudHelper.get_disk_image_info(disk_image)
-        self.MIN_DISK_SPACE = int(disk_image_info["diskSizeGb"])
-
-        # Check to see if the reporting Pub/Sub topic exists
-        if not GoogleCloudHelper.pubsub_topic_exists(self.report_topic):
-            logging.error("Reporting topic '%s' was not found!" % self.report_topic)
-            raise IOError("Reporting topic '%s' not found!" % self.report_topic)
-
-        # Indicate that report topic exists and has been validated
-        self.report_topic_validated = True
-
-    def init_helper_processor(self, name, nr_cpus, mem, disk_space):
-        # Googlefy instance name
-        name = self.__format_instance_name(name)
-        # Return processor object that will be used
-        instance_config = self.__get_instance_config()
-        return Instance(name,
-                        nr_cpus,
-                        mem,
-                        disk_space,
-                        **instance_config)
-
-    def init_task_processor(self, name, nr_cpus, mem, disk_space):
-        # Googlefy instance name
-        name = self.__format_instance_name(name)
-        # Return a processor object with given resource requirements
-        instance_config = self.__get_instance_config()
-        # Create and return processor
-        if self.is_preemptible:
-            return PreemptibleInstance(name,
-                                       nr_cpus,
-                                       mem,
-                                       disk_space,
-                                       **instance_config)
-        else:
-            return Instance(name,
-                            nr_cpus,
-                            mem,
-                            disk_space,
-                            **instance_config)
-
-    def publish_report(self, report=None):
-
-        # Exit as nothing to output
-        if report is None:
-            return
-
-        # Generate report file for transfer
-        with tempfile.NamedTemporaryFile(delete=False) as report_file:
-            report_file.write(str(report).encode("utf8"))
-            report_filepath = report_file.name
-
-        # Generate destination file path
-        dest_path = os.path.join(self.final_output_dir, "%s_final_report.json" % self.name)
-
-        # Transfer report file to bucket
-        options_fast = '-m -o "GSUtil:sliced_object_download_max_components=200"'
-        cmd = "gsutil %s cp -r %s %s 1>/dev/null 2>&1 " % (options_fast, report_filepath, dest_path)
-        GoogleCloudHelper.run_cmd(cmd, err_msg="Could not transfer final report to the final output directory!")
-
-        # Send report to the Pub/Sub report topic if it's known to exist
-        if self.report_topic_validated:
-            GoogleCloudHelper.send_pubsub_message(self.report_topic, message=dest_path, encode=True, compress=True)
-
-    def clean_up(self):
-
-        logging.info("Cleaning up Google Cloud Platform.")
-        # Remove dummy files from output directory
-        try:
-            logging.debug("Looking for dummy files...")
-            dummy_search_string = os.path.join(self.final_output_dir,"**dummy.txt")
-            dummy_outputs = GoogleCloudHelper.ls(dummy_search_string)
-            if len(dummy_outputs) > 0:
-                cmd = "gsutil rm {0}".format(" ".join(dummy_outputs))
-                proc = sp.Popen(cmd, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
-                proc.communicate()
-            logging.debug("Done killing dummy files!")
-        except:
-            logging.warning("(%s) Could not remove dummy input files on google cloud!")
-
-        # Initiate destroy process on all the instances that haven't been destroyed
-        for instance_name, instance_obj in self.processors.items():
-            try:
-                if instance_name not in self.dealloc_procs:
-                    instance_obj.destroy(wait=False)
-            except RuntimeError:
-                logging.warning("(%s) Could not destroy instance!" % instance_name)
-
-        # Now wait for all destroy processes to finish
-        for instance_name, instance_obj in self.processors.items():
-            try:
-                #if instance_obj.get_status() != Processor.OFF:
-                if instance_name not in self.dealloc_procs:
-                    instance_obj.wait_process("destroy")
-            except RuntimeError:
-                logging.warning("(%s) Unable to destroy instance!" % instance_name)
-
-        logging.info("Clean up complete!")
-
-    ####### PRIVATE UTILITY METHODS
-
-    def __get_instance_config(self):
-        # Returns complete config for a task processor
-        params = {}
-        inst_params = self.config["task_processor"]
-        for param, value in inst_params.items():
-            params[param] = value
-
-        # Add platform-specific options
-        params["zone"]                  = self.zone
-        params["service_acct"]          = self.service_acct
-
-        # Randomize the zone within the region if specified
-        if self.randomize_zone:
-            region          = GoogleCloudHelper.get_region(self.zone)
-            params["zone"]  = GoogleCloudHelper.select_random_zone(region)
-
-        # Get instance type
-        return params
+    def authenticate_platform(self):
+        pass
 
     @staticmethod
-    def __format_instance_name(instance_name):
-        # Ensures that instance name conforms to google cloud formatting specs
-        old_instance_name = instance_name
-        instance_name = instance_name.replace("_", "-")
-        instance_name = instance_name.replace(".", "-")
-        instance_name = instance_name.lower()
+    def standardize_instance_name(inst_name):
+        return inst_name.replace("_", "-").lower()
 
-        # Declare if name of instance has changed
-        if old_instance_name != instance_name:
-            logging.warn("Modified instance name from %s to %s for compatibility!" % (old_instance_name, instance_name))
+    def publish_report(self, report):
+        pass
 
-        return instance_name
+    def validate(self):
+        pass
+
+    def clean_up(self):
+        pass
+
+    def get_random_zone(self):
+        return "us-east1-c"
+
+    def get_cloud_instance_class(self):
+        return GoogleInstance
