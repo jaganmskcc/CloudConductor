@@ -29,28 +29,43 @@ class CloudPlatform(object, metaclass=abc.ABCMeta):
         config_parser       = ConfigParser(platform_config_file, self.CONFIG_SPEC)
         self.config         = config_parser.get_config()
 
+        # Only consider the specs related to the current platform
+        self.config = self.config[self.__class__.__name__]
+
+        # Obtain the constants from the platform config
         self.NR_CPUS = {
             "TOTAL" :   self.config["PLAT_MAX_NR_CPUS"],
             "MAX" :     self.config["INST_MAX_NR_CPUS"],
             "MIN" :     self.config["INST_MIN_NR_CPUS"]
         }
-
         self.MEM = {
             "TOTAL" :   self.config["PLAT_MAX_MEM"],
             "MAX" :     self.config["INST_MAX_MEM"],
             "MIN" :     self.config["INST_MIN_MEM"]
         }
-
         self.DISK_SPACE = {
             "TOTAL" :   self.config["PLAT_MAX_DISK_SPACE"],
             "MAX" :     self.config["INST_MAX_DISK_SPACE"],
             "MIN" :     self.config["INST_MIN_DISK_SPACE"]
         }
 
-        # Define workspace directory names
-        self.wrk_dir            = self.config["workspace_dir"]
+        # Obtain the identity and the secret
+        self.identity = self.config["identity"]
+        self.secret = self.config.get("secret", None)
 
-        self.final_output_dir   = self.standardize_dir(final_output_dir)
+        # Obtain processing locations
+        self.region = self.config["region"]
+        self.zone = self.config.get("zone", None)
+        if self.zone is None:
+            self.zone = self.get_random_zone()
+
+        # Obtain remaining parameters from the configuration file
+        self.cmd_retries = self.config["cmd_retries"]
+        self.ssh_connection_user = self.config["ssh_connection_user"]
+
+        #TODO: I still have to add this, because Datastore required a work directory
+        self.wrk_dir = "/data"
+        self.final_output_dir = self.standardize_dir(final_output_dir)
 
         # Dictionary to hold instances currently managed by the platform
         self.instances = {}
@@ -225,8 +240,14 @@ class CloudPlatform(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def standardize_instance_name(self, inst_name):
+    @staticmethod
+    def standardize_instance_name(inst_name):
         return inst_name
+
+    @abc.abstractmethod
+    @staticmethod
+    def standardize_instance_type(nr_cpus, mem, disk_space):
+        return nr_cpus, mem, disk_space
 
     @abc.abstractmethod
     def publish_report(self, report):
@@ -241,14 +262,14 @@ class CloudPlatform(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
+    def get_random_zone(self):
+        pass
+
+    @abc.abstractmethod
     def get_cloud_instance_class(self):
         pass
 
     # PRIVATE UTILITY METHODS
-
-    @staticmethod
-    def standardize_instance_type(nr_cpus, mem, disk_space):
-        return nr_cpus, mem, disk_space
 
     @staticmethod
     def __create_ssh_key(key_prefix):
