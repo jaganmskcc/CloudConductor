@@ -171,6 +171,20 @@ class CloudPlatform(object, metaclass=abc.ABCMeta):
                 logging.debug(f'({inst_name}) Platform fully loaded, we will wait for one minute and check again!')
                 time.sleep(60)
 
+        # Load cloud instance kwargs with platform variables
+        kwargs.update({
+            "identity"              : self.identity,
+            "secret"                : self.secret,
+            "ssh_connection_user"   : self.ssh_connection_user,
+            "ssh_private_key"       : self.ssh_private_key,
+            "cmd_retries"           : self.cmd_retries,
+            "region"                : self.region,
+            "zone"                  : self.zone
+        })
+
+        # Also add the extra information
+        kwargs.update(self.config["extra"])
+
         # Initialize new instance
         try:
             self.instances[inst_name] = self.CloudInstanceClass(inst_name, nr_cpus, mem, disk_space, **kwargs)

@@ -29,10 +29,18 @@ class CloudInstance(object, metaclass=abc.ABCMeta):
         self.ssh_private_key = kwargs.pop("ssh_private_key")
         self.ssh_connection_user = kwargs.pop("ssh_connection_user")
 
+        # Obtain identify and secret from platform
+        self.identity = kwargs.pop("identity")
+        self.secret = kwargs.pop("secret")
+
+        # Obtain location specific information
+        self.region = kwargs.pop("region")
+        self.zone = kwargs.pop("zone")
+
         # Initialize the workspace directories
         self.wrk_dir = "/data"
-        self.log_dir = "/data/log"
-        self.wrk_out_dir = "/data/output"
+        self.log_dir = f"{self.wrk_dir}/log"
+        self.wrk_out_dir = f"{self.wrk_dir}/output"
 
         # Default number of times to retry commands if none specified at command runtime
         self.default_num_cmd_retries = kwargs.pop("cmd_retries", 3)
